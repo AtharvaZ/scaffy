@@ -11,13 +11,13 @@ from .schemas import (
 )
 
 __all__ = [
-    "AssignmentInput",
-    "Task", 
-    "TaskBreakdown",
-    "StarterCodeRequest",
-    "StarterCode",
-    "HintRequest",
-    "Hint",
+    "AssignmentSchema",
+    "TaskSchema", 
+    "TaskBreakdownSchema",
+    "BoilerPlateCodeSchema",
+    "StarterCodeSchema",
+    "HintResponseSchema",
+    "HintSchema",
     "SyntaxRequest",
     "SyntaxGuidance"
 ]

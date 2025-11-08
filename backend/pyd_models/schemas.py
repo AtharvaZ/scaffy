@@ -33,19 +33,15 @@ class BoilerPlateCodeSchema(BaseModel):
     task_description: str
     programming_language: str
     concepts: List[str]
+    known_language: Optional[str] = None
 
 class StarterCodeSchema(BaseModel):
     code_snippet: str
     instructions: str
     todos: List[str]
-
+    concept_examples: Optional[Dict[str, str]] = None
 
 #--------Schema for Agent 3: Live Helper--------#
-
-class HintSchema(BaseModel):
-    hint_text: str
-    related_concept: str
-    difficulty_level: str
 
 class HintResponseSchema(BaseModel):
    task_description: str
@@ -54,6 +50,13 @@ class HintResponseSchema(BaseModel):
    question: str
    previous_hints: List[str]
    help_count: int
+   known_language: Optional[str] = None
+   target_language: Optional[str] = None
+
+class HintSchema(BaseModel):
+    hint: str
+    hint_type: str
+    example_code: Optional[str] = None
 
 
 #--------Schema for Agent 4: Code Reviewer/Guidance--------#
