@@ -7,7 +7,7 @@ load_dotenv()
 
 class AnthropicClient:
     def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.api_key = os.getenv("CLAUDE_API_KEY")
         self.client = anthropic.Anthropic(api_key=self.api_key)
         self.model = "claude-sonnet-4-20250514"
 

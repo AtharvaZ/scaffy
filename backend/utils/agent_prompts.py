@@ -85,7 +85,27 @@ EXAMPLE (good concept specificity):
     ]
 }}
 
-CRITICAL: Your response must be ONLY valid JSON. Do not include any explanation, markdown, or text outside the JSON object."""
+CRITICAL RESPONSE FORMAT:
+- Your response must be ONLY valid JSON
+- Do NOT wrap in markdown code blocks (no ``` or ```json)
+- Do NOT include any explanation before or after the JSON
+- Do NOT include comments in the JSON
+- Ensure all strings are properly escaped
+- Ensure all JSON brackets and braces are balanced
+- Start your response with {{ and end with }}
+
+EXAMPLE VALID RESPONSE:
+{{"overview": "Brief description", "total_estimated_time": "2 hours", "tasks": [{{"id": 1, "title": "Task 1", "description": "Do X", "dependencies": [], "estimated_time": "30 minutes", "concepts": ["concept1"]}}]}}
+
+INVALID RESPONSES (DO NOT DO THIS):
+```json
+{{"tasks": []}}
+```
+
+Here's the JSON:
+{{"tasks": []}}
+
+{{"tasks": []}} // This is the breakdown"""
 
 
 def get_codegen_prompt(task_description: str, language: str, concepts: list, known_language: str = None) -> str:
@@ -124,12 +144,20 @@ Examples of when NOT to include concept examples:
 """
     else:
         comparison_instruction = """
-The student has not specified a known language. Provide complete working examples ONLY for:
-- Advanced concepts that are non-intuitive (threading, async patterns, delegates)
-- Language-specific features (LINQ, generics, special syntax)
-- Complex patterns that need demonstration
+Provide examples for all types of programming concepts, including:
 
-Do NOT provide examples for basic programming concepts (loops, conditionals, functions, basic data structures).
+1. **Basic concepts** (show very simple, clear examples):
+   - Loops
+   - Conditionals
+   - Functions
+   - Basic data structures (arrays, lists, dictionaries, etc.)
+
+2. **Advanced concepts** (provide well-explained, working examples):
+   - Non-intuitive patterns like threading, async/await, delegates
+   - Language-specific features such as LINQ, generics, and special syntax
+   - Complex patterns that need demonstration
+
+Ensure that basic examples are simple and concise, while advanced examples demonstrate practical usage and subtleties.
 """
     
     return f"""You are helping a student learn programming by providing starter code templates.
@@ -169,7 +197,7 @@ WHAT MAKES A GOOD CONCEPT EXAMPLE:
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
-    "code": "the complete starter code template with TODO comments",
+    "code_snippet": "the complete starter code template with TODO comments",
     "instructions": "brief instructions on how to approach completing the TODOs",
     "todos": ["list of TODO items in the order they should be completed"],
     "concept_examples": {{
@@ -191,7 +219,7 @@ EXAMPLE concept_examples for LINQ (C++ student learning C#):
 
 EXAMPLE concept_examples set to null (if all concepts are familiar):
 {{
-    "code": "...",
+    "code_snippet": "...",
     "instructions": "...",
     "todos": [...],
     "concept_examples": null
@@ -202,8 +230,17 @@ Example TODO comment style in the starter code:
 // TODO: Create a loop to process each item  
 // TODO: Call the helper function and store the result
 
-CRITICAL: Your response must be ONLY valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON object. The "code" field should contain the actual code as a string with proper newlines (\\n).
-CRITICAL: In concept_examples, use \\n for newlines within the example code strings. Each example should be 10-20 lines showing a COMPLETE working pattern."""
+CRITICAL RESPONSE FORMAT:
+- Your response must be ONLY valid JSON
+- Do NOT wrap in markdown code blocks (no ``` or ```json)
+- Do NOT include any explanation before or after the JSON
+- The "code_snippet" field should contain code as a string with \\n for newlines
+- In concept_examples, use \\n for newlines within example code strings
+- Ensure all strings are properly escaped (especially quotes and backslashes)
+- Start your response with {{ and end with }}
+
+EXAMPLE VALID RESPONSE START:
+{{"code_snippet": "def example():\\n    pass", "instructions": "Complete the function", "todos": ["Add logic"], "concept_examples": null}}"""
 
 
 def get_helper_prompt(task_description: str, concepts: list, student_code: str,
@@ -319,5 +356,13 @@ Return ONLY a valid JSON object with this EXACT structure:
     "example_code": "optional example code if relevant (or null)"
 }}
 
-CRITICAL: Your response must be ONLY valid JSON. Do not include any explanation, markdown, or text outside the JSON object.
-If including example_code, use \\n for newlines within the string."""
+CRITICAL RESPONSE FORMAT:
+- Your response must be ONLY valid JSON
+- Do NOT wrap in markdown code blocks (no ``` or ```json)
+- Do NOT include any explanation before or after the JSON
+- If including example_code, use \\n for newlines within the string
+- Ensure all strings are properly escaped
+- Start your response with {{ and end with }}
+
+EXAMPLE VALID RESPONSE:
+{{"hint": "Try using a loop here", "hint_type": "gentle_hint", "example_code": null}}"""

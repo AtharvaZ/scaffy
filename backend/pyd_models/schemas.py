@@ -65,6 +65,22 @@ class HintSchema(BaseModel):
     example_code: Optional[str] = None
 
 
+#--------Schema for Code Execution--------#
+
+#Input
+class CodeExecutionRequest(BaseModel):
+    code: str
+    language: str
+
+#Output
+class CodeExecutionResult(BaseModel):
+    success: bool
+    output: str
+    error: str
+    exit_code: int
+    execution_time: str
+
+
 # #--------Schema for Agent 4: Code Reviewer/Guidance--------#
 
 # class SyntaxRequest(BaseModel):

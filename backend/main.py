@@ -2,7 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
+import logging
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from pyd_models.schemas import (
     AssignmentSchema,
@@ -10,13 +15,16 @@ from pyd_models.schemas import (
     BoilerPlateCodeSchema,
     StarterCode,
     HintResponseSchema,
-    HintSchema
+    HintSchema,
+    CodeExecutionRequest,
+    CodeExecutionResult
 )
 
-# Import agents
+# Import agents and services
 from agents.parser_agent import ParserAgent
 from agents.codegen_agent import CodegenAgent
 from agents.live_helper import LiveHelperAgent
+from services.code_runner import get_code_runner
 
 load_dotenv()
 
@@ -75,6 +83,15 @@ async def parse_assignment(assignment: AssignmentSchema):
     Agent 1 analyzes the assignment and creates a structured breakdown.
     """
     try:
+        # Log the received assignment for debugging
+        logger.info("=" * 80)
+        logger.info("RECEIVED ASSIGNMENT REQUEST:")
+        logger.info(f"Assignment Text: {assignment.assignment_text[:200]}..." if len(assignment.assignment_text) > 200 else f"Assignment Text: {assignment.assignment_text}")
+        logger.info(f"Target Language: {assignment.target_language}")
+        logger.info(f"Known Language: {assignment.known_language}")
+        logger.info(f"Experience Level: {assignment.experience_level}")
+        logger.info("=" * 80)
+        
         # Call Agent 1 to parse the assignment
         result = parser_agent.parse_assignment(assignment)
         return result
@@ -100,7 +117,7 @@ async def generate_starter_code(request: BoilerPlateCodeSchema):
     """
     try:
         # Call Agent 2 to generate starter code
-        result = codegen_agent.generate_starter_code(request)
+        result = codegen_agent.generate_boilerplate_code(request)
         return result
     
     except Exception as e:
@@ -129,13 +146,45 @@ async def get_hint(request: HintResponseSchema):
     """
     try:
         # Call Agent 3 to get a hint
-        result = helper_agent.get_hint(request)
+        result = helper_agent.provide_hint(request)
         return result
     
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate hint: {str(e)}"
+        )
+
+
+# ============================================
+# CODE EXECUTION
+# ============================================
+
+@app.post("/run-code", response_model=CodeExecutionResult)
+async def run_code(request: CodeExecutionRequest):
+    """
+    Execute student code and return results
+    
+    Supports Python and JavaScript execution with:
+    - 5 second timeout
+    - Output capture
+    - Error handling
+    """
+    try:
+        logger.info(f"Executing {request.language} code ({len(request.code)} characters)")
+        
+        code_runner = get_code_runner()
+        result = code_runner.run_code(request.code, request.language)
+        
+        logger.info(f"Execution completed: success={result['success']}, exit_code={result['exit_code']}")
+        
+        return CodeExecutionResult(**result)
+    
+    except Exception as e:
+        logger.error(f"Code execution error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute code: {str(e)}"
         )
 
 
