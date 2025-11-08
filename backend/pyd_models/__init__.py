@@ -3,11 +3,9 @@ from .schemas import (
     TaskSchema,
     TaskBreakdownSchema,
     BoilerPlateCodeSchema,
-    StarterCodeSchema,
+    StarterCode,
     HintResponseSchema,
     HintSchema,
-    SyntaxRequest,
-    SyntaxGuidance
 )
 
 __all__ = [
@@ -15,9 +13,7 @@ __all__ = [
     "TaskSchema", 
     "TaskBreakdownSchema",
     "BoilerPlateCodeSchema",
-    "StarterCodeSchema",
+    "StarterCode",
     "HintResponseSchema",
     "HintSchema",
-    "SyntaxRequest",
-    "SyntaxGuidance"
 ]
