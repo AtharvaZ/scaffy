@@ -90,8 +90,8 @@ CRITICAL: Your response must be ONLY valid JSON. Do not include any explanation,
 
 def get_codegen_prompt(task_description: str, language: str, concepts: list, known_language: str = None) -> str:
     """
-    Agent 2: Code Generator
-    Generate starter code template with TODO comments and intelligent concept examples
+    Agent 2: Code Generator (UPDATED v2)
+    Generate starter code template with TODO comments and COMPLETE working concept examples
     
     Args:
         task_description: What the task requires
@@ -107,7 +107,7 @@ def get_codegen_prompt(task_description: str, language: str, concepts: list, kno
         comparison_instruction = f"""
 The student already knows {known_language}. When providing concept examples:
 - If a concept has a DIRECT equivalent in {known_language}, do NOT provide an example
-- If a concept is COMPLETELY NEW (no equivalent in {known_language}), provide a minimal focused example
+- If a concept is COMPLETELY NEW (no equivalent in {known_language}), provide a complete working example
 - If a concept is SIMILAR but with different syntax, provide a brief comparison
 
 Examples of when to include concept examples:
@@ -124,12 +124,12 @@ Examples of when NOT to include concept examples:
 """
     else:
         comparison_instruction = """
-The student has not specified a known language. Provide minimal concept examples ONLY for:
-- Advanced concepts that are non-intuitive (threading, async patterns)
-- Language-specific features (LINQ, delegates, generics)
-- Complex syntax that needs clarification
+The student has not specified a known language. Provide complete working examples ONLY for:
+- Advanced concepts that are non-intuitive (threading, async patterns, delegates)
+- Language-specific features (LINQ, generics, special syntax)
+- Complex patterns that need demonstration
 
-Do NOT provide examples for basic programming concepts (loops, conditionals, functions).
+Do NOT provide examples for basic programming concepts (loops, conditionals, functions, basic data structures).
 """
     
     return f"""You are helping a student learn programming by providing starter code templates.
@@ -148,10 +148,24 @@ CRITICAL RULES FOR STARTER CODE:
 
 CRITICAL RULES FOR CONCEPT EXAMPLES:
 1. Decide intelligently which concepts need examples (use the guidance above)
-2. Keep examples MINIMAL - 3-5 lines maximum
-3. Examples should show ONLY the concept syntax, not solve the task
-4. Use DIFFERENT variable names/context than the actual task
-5. If no examples are needed, set concept_examples to null or empty dict
+2. Examples must be COMPLETE WORKING CODE (10-20 lines), not just syntax snippets
+3. Show the FULL PATTERN with a similar but different context
+4. Use DIFFERENT variable names and scenarios than the actual task
+5. Include brief explanation of what the example demonstrates
+6. If no examples are needed, set concept_examples to null or empty dict
+
+WHAT MAKES A GOOD CONCEPT EXAMPLE:
+❌ BAD (too minimal):
+"Threading": "Thread t = new Thread(() => {{}});"
+
+✅ GOOD (complete working pattern):
+"Threading": "// Complete example of creating and managing threads\\nprivate static void WorkerTask(int taskId) {{\\n    Console.WriteLine($\\"Task {{taskId}} starting\\");\\n    Thread.Sleep(1000);\\n    Console.WriteLine($\\"Task {{taskId}} completed\\");\\n}}\\n\\nstatic void Main() {{\\n    Thread thread1 = new Thread(() => WorkerTask(1));\\n    Thread thread2 = new Thread(() => WorkerTask(2));\\n    \\n    thread1.Start();\\n    thread2.Start();\\n    \\n    thread1.Join(); // Wait for completion\\n    thread2.Join();\\n}}\\n\\nℹ️ This shows how to create multiple threads, start them, and wait for completion"
+
+❌ BAD (just syntax):
+"Thread Safety": "lock(obj) {{ /* code */ }}"
+
+✅ GOOD (complete working pattern):
+"Thread Safety": "// Thread-safe counter example\\nprivate static object lockObj = new object();\\nprivate static int counter = 0;\\n\\npublic static void IncrementCounter() {{\\n    lock(lockObj) {{\\n        counter++;\\n        Console.WriteLine($\\"Counter: {{counter}}\\");\\n    }}\\n}}\\n\\npublic static int GetCounter() {{\\n    lock(lockObj) {{\\n        return counter;\\n    }}\\n}}\\n\\nℹ️ This demonstrates using lock() to protect shared data access"
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
@@ -159,14 +173,20 @@ Return ONLY a valid JSON object with this EXACT structure:
     "instructions": "brief instructions on how to approach completing the TODOs",
     "todos": ["list of TODO items in the order they should be completed"],
     "concept_examples": {{
-        "concept_name": "// Brief 3-5 line example showing ONLY this concept\\n// Use different context than the task\\nExample code here"
+        "concept_name": "// Complete working code example (10-20 lines)\\n// Use similar but different context\\n// Include what it demonstrates at the end"
     }}
 }}
 
 EXAMPLE concept_examples for C# threading (if student knows Python):
 {{
-    "Threading": "// Creating and starting a thread in C#\\nThread worker = new Thread(() => {{\\n    // Work happens here\\n}});\\nworker.Start();\\nworker.Join(); // Wait for completion",
-    "Thread Safety": "// Using lock for thread-safe operations\\nprivate static object lockObj = new object();\\nlock(lockObj) {{\\n    // Critical section here\\n}}"
+    "Threading": "// Complete example: Creating and managing multiple threads\\nprivate static void ProcessOrder(int orderId) {{\\n    Console.WriteLine($\\"Processing order {{orderId}}\\");\\n    Thread.Sleep(500); // Simulate work\\n    Console.WriteLine($\\"Order {{orderId}} completed\\");\\n}}\\n\\nstatic void Main() {{\\n    Thread order1 = new Thread(() => ProcessOrder(1));\\n    Thread order2 = new Thread(() => ProcessOrder(2));\\n    Thread order3 = new Thread(() => ProcessOrder(3));\\n    \\n    order1.Start();\\n    order2.Start();\\n    order3.Start();\\n    \\n    order1.Join(); // Wait for all to finish\\n    order2.Join();\\n    order3.Join();\\n    \\n    Console.WriteLine(\\"All orders processed\\");\\n}}\\n\\nℹ️ This shows how to create multiple threads, start them concurrently, and wait for completion",
+    
+    "Thread Safety": "// Complete example: Thread-safe list operations\\nprivate static object listLock = new object();\\nprivate static List<string> sharedList = new List<string>();\\n\\npublic static void AddItem(string item) {{\\n    lock(listLock) {{\\n        if (!sharedList.Contains(item)) {{\\n            sharedList.Add(item);\\n            Console.WriteLine($\\"Added: {{item}}\\");\\n        }}\\n    }}\\n}}\\n\\npublic static void RemoveItem(string item) {{\\n    lock(listLock) {{\\n        if (sharedList.Remove(item)) {{\\n            Console.WriteLine($\\"Removed: {{item}}\\");\\n        }}\\n    }}\\n}}\\n\\npublic static int GetCount() {{\\n    lock(listLock) {{\\n        return sharedList.Count;\\n    }}\\n}}\\n\\nℹ️ This demonstrates protecting shared data with lock() for thread-safe operations"
+}}
+
+EXAMPLE concept_examples for LINQ (C++ student learning C#):
+{{
+    "LINQ queries": "// Complete example: Filtering and transforming data\\nclass Product {{\\n    public string Name {{ get; set; }}\\n    public decimal Price {{ get; set; }}\\n    public string Category {{ get; set; }}\\n}}\\n\\nstatic void Main() {{\\n    List<Product> products = new List<Product> {{\\n        new Product {{ Name = \\"Laptop\\", Price = 999, Category = \\"Electronics\\" }},\\n        new Product {{ Name = \\"Mouse\\", Price = 25, Category = \\"Electronics\\" }},\\n        new Product {{ Name = \\"Desk\\", Price = 299, Category = \\"Furniture\\" }}\\n    }};\\n    \\n    // Filter products over $50\\n    var expensive = products.Where(p => p.Price > 50);\\n    \\n    // Get only names\\n    var names = expensive.Select(p => p.Name);\\n    \\n    // Sort by price\\n    var sorted = expensive.OrderBy(p => p.Price);\\n    \\n    foreach(var product in sorted) {{\\n        Console.WriteLine($\\"{{product.Name}}: ${{product.Price}}\\");\\n    }}\\n}}\\n\\nℹ️ This shows LINQ methods: Where() for filtering, Select() for projection, OrderBy() for sorting"
 }}
 
 EXAMPLE concept_examples set to null (if all concepts are familiar):
@@ -177,14 +197,13 @@ EXAMPLE concept_examples set to null (if all concepts are familiar):
     "concept_examples": null
 }}
 
-Example TODO comment style in the code:
+Example TODO comment style in the starter code:
 // TODO: Implement input validation here
 // TODO: Create a loop to process each item  
 // TODO: Call the helper function and store the result
 
 CRITICAL: Your response must be ONLY valid JSON. Do not include any markdown code blocks, explanations, or text outside the JSON object. The "code" field should contain the actual code as a string with proper newlines (\\n).
-
-CRITICAL: In concept_examples, use \\n for newlines within the example code strings."""
+CRITICAL: In concept_examples, use \\n for newlines within the example code strings. Each example should be 10-20 lines showing a COMPLETE working pattern."""
 
 
 def get_helper_prompt(task_description: str, concepts: list, student_code: str,
