@@ -6,6 +6,8 @@ from .schemas import (
     StarterCode,
     HintResponseSchema,
     HintSchema,
+    ConceptExampleRequest,
+    ConceptExampleResponse,
 )
 
 __all__ = [

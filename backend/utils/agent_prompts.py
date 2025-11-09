@@ -247,9 +247,9 @@ def get_helper_prompt(task_description: str, concepts: list, student_code: str,
                       question: str, previous_hints: list, help_count: int, 
                       known_language: str = None, target_language: str = None) -> str:
     """
-    Agent 3: Live Coding Helper (UPDATED)
+    Agent 3: Live Coding Helper (SMART CONTEXT-AWARE VERSION)
     Provide contextual hints based on student's struggle level
-    Now includes language context for better comparative hints
+    NOW: Better parsing of student's question to identify which TODO they're stuck on
     """
     concepts_str = ", ".join(concepts)
     previous_hints_str = "\n".join([f"- {hint}" for hint in previous_hints]) if previous_hints else "None"
@@ -292,6 +292,21 @@ For example: "Think of this like Python's 'with' statement" or "Similar to C++'s
 - You can show larger code examples but use different variable names and slightly different scenario
 - Still leave some implementation work for them (don't just give the exact answer)"""
     
+    # NEW: Analyze the student's code and question to identify context
+    code_analysis_section = f"""
+ANALYZE THE STUDENT'S SITUATION:
+1. Look at their code to see how far they've gotten
+2. Look for TODO comments to see what they haven't implemented yet
+3. Their question might reference a specific TODO or part of the task
+4. If their question is "I'm stuck on: [specific TODO text]", focus your hint on THAT specific part
+
+SMART CONTEXT DETECTION:
+- If you see "// TODO: Validate room number" in their code AND they're asking about validation, focus on that
+- If multiple TODOs remain, prioritize the one they're asking about
+- Look at what they've already implemented successfully - don't repeat hints about those parts
+- If they're stuck on line X, look at the surrounding code context
+"""
+    
     return f"""You are a live coding assistant helping a student who is stuck while programming.
 
 Task Goal: {task_description}
@@ -310,6 +325,8 @@ Previous Hints Given:
 Times Asked for Help on This Section: {help_count}
 Hint Level: {hint_level}
 
+{code_analysis_section}
+
 INSTRUCTIONS:
 {hint_instruction}
 
@@ -321,33 +338,43 @@ CRITICAL RULES:
 5. Do not repeat previous hints - build on them and go deeper
 6. Be encouraging and supportive - struggling is part of learning!
 7. If they have a syntax error or misunderstanding, you can point it out directly
-8. Focus on the CURRENT question they asked, not the entire task
+8. **FOCUS on the SPECIFIC part they're asking about, not the entire task**
+9. **If you can identify which TODO they're stuck on from their code/question, address ONLY that TODO**
+
+SMART HINT TARGETING:
+- If question mentions "validate" or "validation" → Focus on input validation logic
+- If question mentions "check" or "available" → Focus on checking data structures
+- If question mentions "lock" or "thread" → Focus on thread safety
+- If question is vague but you see incomplete TODOs in code → Guide them to the next logical TODO
 
 EXAMPLE HINT PROGRESSION:
 
-Hint 1 (gentle): "Think about how you'd check if a room is available before booking it. What data structure would help you keep track of available rooms?"
+Hint 1 (gentle): "I see you're working on room validation. Think about how you'd check if a number is within a valid range. What data structure would help you keep track of available rooms?"
 
-Hint 2 (moderate): "You'll want to use a collection like a List<int> to store available rooms. Before booking, check if the room exists in that list. Here's a similar pattern:
+Hint 2 (moderate): "For validating the room number, you'll want to check two things: 1) Is it a positive number? 2) Does it exist in your available rooms list. Here's a similar pattern for validating an ID:
 ```
-List<int> items = new List<int>();
-if (items.Contains(searchItem)) {{
-    // Item exists, do something
+if (id < 1 || id > maxId) {{
+    return false;  // Invalid
 }}
 ```"
 
-Hint 3 (strong): "Here's an example with a ticket booking system (similar logic):
+Hint 3 (strong): "Here's an example of validation with a ticket system (apply this same logic to room validation):
 ```
-private List<int> availableTickets = new List<int>() {{1, 2, 3, 4, 5}};
-
-public bool BookTicket(int ticketId) {{
-    if (availableTickets.Contains(ticketId)) {{
-        availableTickets.Remove(ticketId);
-        return true;
+public bool ValidateTicket(int ticketId) {{
+    if (ticketId < 1 || ticketId > totalTickets) {{
+        Console.WriteLine("Invalid ticket ID");
+        return false;
     }}
-    return false;
+    
+    if (!availableTickets.Contains(ticketId)) {{
+        Console.WriteLine("Ticket not available");
+        return false;
+    }}
+    
+    return true;
 }}
 ```
-Apply this same pattern to your room booking system."
+Apply this pattern to validate your room number."
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{

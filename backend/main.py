@@ -17,13 +17,16 @@ from pyd_models.schemas import (
     HintResponseSchema,
     HintSchema,
     CodeExecutionRequest,
-    CodeExecutionResult
+    CodeExecutionResult,
+    ConceptExampleRequest,
+    ConceptExampleResponse
 )
 
 # Import agents and services
 from agents.parser_agent import ParserAgent
 from agents.codegen_agent import CodegenAgent
 from agents.live_helper import LiveHelperAgent
+from agents.concept_example import ConceptExampleAgent
 from services.code_runner import get_code_runner
 
 load_dotenv()
@@ -45,7 +48,7 @@ app.add_middleware(
 parser_agent = ParserAgent()
 codegen_agent = CodegenAgent()
 helper_agent = LiveHelperAgent()
-
+concept_example_agent = ConceptExampleAgent()
 
 @app.get("/")
 async def root():
@@ -155,6 +158,28 @@ async def get_hint(request: HintResponseSchema):
             detail=f"Failed to generate hint: {str(e)}"
         )
 
+# ============================================
+# ON-DEMAND CONCEPT EXAMPLES
+# ============================================
+
+@app.post("/get-concept-example", response_model=ConceptExampleResponse)
+async def get_concept_example(request: ConceptExampleRequest):
+    
+    try:
+        logger.info(f"Generating on-demand example for concept: {request.concept} in {request.programming_language}")
+        
+        # Call the concept example agent
+        result = concept_example_agent.generate_example(request)
+        
+        logger.info(f"Successfully generated {result.example_type} example for {request.concept}")
+        return result
+    
+    except Exception as e:
+        logger.error(f"Failed to generate concept example: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate concept example: {str(e)}"
+        )
 
 # ============================================
 # CODE EXECUTION

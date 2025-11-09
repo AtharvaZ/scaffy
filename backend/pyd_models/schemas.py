@@ -81,17 +81,21 @@ class CodeExecutionResult(BaseModel):
     execution_time: str
 
 
-# #--------Schema for Agent 4: Code Reviewer/Guidance--------#
+#--------Schema for Concept Example (On-Demand)--------#
 
-# class SyntaxRequest(BaseModel):
-#     concept: str
-#     target_language: str
-#     known_language: Optional[str] = None
+#Input
+class ConceptExampleRequest(BaseModel):
+    concept: str
+    programming_language: str
+    known_language: Optional[str] = None
+    context: Optional[str] = None  # Optional: what they're trying to do
 
-# class SyntaxGuidance(BaseModel):
-#     concept: str
-#     target_syntax: str
-#     explanation: str
-#     known_syntax: Optional[str] = None
-#     comparison: Optional[str] = None
-#     examples: List[str]
+#Output
+class ConceptExampleResponse(BaseModel):
+    concept: str
+    example_type: str  # "basic_syntax", "intermediate_pattern", "advanced_pattern"
+    code_example: str
+    explanation: str
+    comparison_to_known: Optional[str] = None  # If known_language provided
+
+

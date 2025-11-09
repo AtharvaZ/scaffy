@@ -27,7 +27,6 @@ class ParserAgent:
             target_language=inputData.target_language,
             known_language=inputData.known_language,
             experience_level=inputData.experience_level
-            experience_level=inputData.experience_level
         )
 
         last_error = None
