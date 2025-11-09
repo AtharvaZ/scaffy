@@ -18,9 +18,6 @@ export function ProgressIndicator({ totalTasks, completedTasks, currentTask }: P
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-xs text-gray-500 text-center">
-          Current task: {currentTask + 1} of {totalTasks}
-        </p>
       </div>
     </div>
   );

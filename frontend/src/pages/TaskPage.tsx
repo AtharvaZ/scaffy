@@ -347,7 +347,7 @@ export function TaskPage() {
                           <h4 className="text-sm font-semibold text-black dark:text-white">Example</h4>
                           <span className="text-xs text-gray-500 dark:text-gray-500">({proficientLanguage})</span>
                         </div>
-                        {Object.keys(taskConceptExamples).length > 0 ? (
+                        {Object.keys(taskConceptExamples).length > 0 || taskExamples[taskIndex] ? (
                           <div className="space-y-4">
                             {Object.entries(taskConceptExamples).map(([concept, example], idx) => (
                               <div key={idx} className="space-y-2">
@@ -359,36 +359,8 @@ export function TaskPage() {
                                 </pre>
                               </div>
                             ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                            <Code2 className="h-10 w-10 text-gray-400 dark:text-gray-600 mb-2" />
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              No examples needed for this task
-                            </p>
-                            {taskConcepts.length > 0 && (
-                              <Button
-                                onClick={() => fetchTaskExample(taskIndex, task?.description || todo, taskConcepts)}
-                                disabled={loadingTaskExample === taskIndex || isLoading}
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
-                              >
-                                {loadingTaskExample === taskIndex ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Loading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Lightbulb className="mr-2 h-4 w-4" />
-                                    Get Example
-                                  </>
-                                )}
-                              </Button>
-                            )}
                             {taskExamples[taskIndex] && loadingTaskExample !== taskIndex && (
-                              <div className="mt-4 w-full space-y-3">
+                              <div className="space-y-3 text-left">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
@@ -413,7 +385,7 @@ export function TaskPage() {
                                     <X className="h-3 w-3" />
                                   </Button>
                                 </div>
-                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 overflow-x-auto">
+                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 overflow-x-auto text-left">
                                   {taskExamples[taskIndex].code_example}
                                 </pre>
                                 <div className="text-xs text-gray-600 dark:text-gray-400">
@@ -426,6 +398,32 @@ export function TaskPage() {
                                 )}
                               </div>
                             )}
+                          </div>
+                        ) : (
+                          <div className="py-8 space-y-4">
+                            <div className="flex flex-col items-center justify-center text-center space-y-4">
+                              {taskConcepts.length > 0 && (
+                                <Button
+                                  onClick={() => fetchTaskExample(taskIndex, task?.description || todo, taskConcepts)}
+                                  disabled={loadingTaskExample === taskIndex || isLoading}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
+                                >
+                                  {loadingTaskExample === taskIndex ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Loading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lightbulb className="mr-2 h-4 w-4" />
+                                      Get Example
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         )}
                         {/* Concepts used section */}

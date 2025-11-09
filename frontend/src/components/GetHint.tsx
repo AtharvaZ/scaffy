@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { X, Lightbulb, Loader2 } from 'lucide-react';
 import { getHint } from '../api/endpoints';
@@ -13,15 +13,17 @@ interface GetHintProps {
   currentTodoIndex?: number;
   knownLanguage?: string;
   onClose: () => void;
+  autoTrigger?: boolean;
+  autoTriggerQuestion?: string;
 }
 
-export function GetHint({ code, language, currentTask, scaffold, currentTodoIndex = 0, knownLanguage, onClose }: GetHintProps) {
+export function GetHint({ code, language, currentTask, scaffold, currentTodoIndex = 0, knownLanguage, onClose, autoTrigger = false, autoTriggerQuestion }: GetHintProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [helpCount, setHelpCount] = useState(0);
   const [previousHints, setPreviousHints] = useState<string[]>([]);
 
-  const handleGetHint = async () => {
+  const handleGetHint = async (questionOverride?: string) => {
     if (!scaffold) return;
 
     setIsLoading(true);
@@ -30,27 +32,36 @@ export function GetHint({ code, language, currentTask, scaffold, currentTodoInde
       const todos = scaffold.task_todos?.[`task_${currentTask}`] || scaffold.todos || [];
       const currentTodo = todos[currentTodoIndex] || null;
       
-      // Build question with current TODO
-      const question = currentTodo 
+      // Build question - use override if provided, otherwise use TODO or default
+      const question = questionOverride || (currentTodo 
         ? `I'm stuck on: ${currentTodo}`
-        : `I'm stuck on task ${currentTask + 1}`;
+        : `I'm stuck on task ${currentTask + 1}`);
 
       // Get task description and concepts
       const taskDescription = scaffold.todo_list?.[currentTask] || 'Current task';
       const concepts = scaffold.task_concepts?.[`task_${currentTask}`] || [];
 
+      // Ensure all values are serializable (strings/arrays/numbers only)
+      const cleanCode = typeof code === 'string' ? code : String(code || '');
+      const cleanConcepts = Array.isArray(concepts) ? concepts.map(c => typeof c === 'string' ? c : String(c)) : [];
+      const cleanQuestion = typeof question === 'string' ? question : String(question || '');
+      const cleanTaskDescription = typeof taskDescription === 'string' ? taskDescription : String(taskDescription || '');
+      const cleanPreviousHints = Array.isArray(previousHints) ? previousHints.map(h => typeof h === 'string' ? h : String(h)) : [];
+      const cleanKnownLanguage = knownLanguage ? (typeof knownLanguage === 'string' ? knownLanguage : String(knownLanguage)) : undefined;
+      const cleanTargetLanguage = language ? (typeof language === 'string' ? language : String(language)) : undefined;
+
       // Get hint from backend
       // Note: knownLanguage should be passed as prop or retrieved from store
       const result = await safeApiCall(
         () => getHint(
-          taskDescription,
-          concepts,
-          code,
-          question,
-          previousHints,
+          cleanTaskDescription,
+          cleanConcepts,
+          cleanCode,
+          cleanQuestion,
+          cleanPreviousHints,
           helpCount + 1,
-          knownLanguage, // knownLanguage
-          language // targetLanguage
+          cleanKnownLanguage,
+          cleanTargetLanguage
         ),
         'Failed to get hint'
       );
@@ -66,6 +77,14 @@ export function GetHint({ code, language, currentTask, scaffold, currentTodoInde
       setIsLoading(false);
     }
   };
+
+  // Auto-trigger hint when component mounts with autoTrigger prop
+  useEffect(() => {
+    if (autoTrigger && scaffold && autoTriggerQuestion && helpCount === 0 && !isLoading) {
+      handleGetHint(autoTriggerQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger, autoTriggerQuestion]);
 
   const getHintLevel = () => {
     if (helpCount === 0) return 1;

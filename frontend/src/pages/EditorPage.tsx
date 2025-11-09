@@ -11,7 +11,7 @@ import { GetHint } from '../components/GetHint';
 import { GetConceptExample } from '../components/GetConceptExample';
 import { TodoChecklist } from '../components/TodoChecklist';
 import { DarkModeToggle } from '../components/DarkModeToggle';
-import { runCode, getFeedback } from '../api/endpoints';
+import { runCode } from '../api/endpoints';
 import { safeApiCall } from '../api/client';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Lightbulb, Code2 } from 'lucide-react';
@@ -50,6 +50,7 @@ export function EditorPage() {
   const [helpMode, setHelpMode] = useState<'hint' | 'example'>('hint');
   const [currentTodoIndex, setCurrentTodoIndex] = useState(0);
   const [completedTodos, setCompletedTodos] = useState<Set<number>>(new Set());
+  const [autoTriggerQuestion, setAutoTriggerQuestion] = useState<string | undefined>(undefined);
 
   // Redirect if no scaffold
   useEffect(() => {
@@ -103,40 +104,41 @@ export function EditorPage() {
     }
   };
 
-  const handleGetFeedback = async () => {
-    if (!scaffold || !studentCode) return;
+  const handleGetFeedback = () => {
+    if (!scaffold || !studentCode || !runnerResult) return;
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Note: getFeedback endpoint is not available in the backend
-      // This is a placeholder for future implementation
-      setError('Feedback feature is not yet available. This will be implemented in a future update.');
-      // const taskId = `task_${currentTask}`;
-      // const result = await safeApiCall(
-      //   () =>
-      //     getFeedback(
-      //       studentCode,
-      //       runnerResult,
-      //       scaffold,
-      //       studentId,
-      //       assignmentId,
-      //       taskId
-      //     ),
-      //   'Failed to get feedback'
-      // );
-
-      // if (result) {
-      //   setFeedback(result);
-      //   setShowFeedback(true);
-      //   incrementAttemptCount();
-      // }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsLoading(false);
+    // Build error message from runner result
+    const errorMessages: string[] = [];
+    
+    if (runnerResult.stderr) {
+      errorMessages.push(runnerResult.stderr);
     }
+    
+    if (runnerResult.failed_tests && runnerResult.failed_tests.length > 0) {
+      runnerResult.failed_tests.forEach(test => {
+        if (test.error_message) {
+          errorMessages.push(test.error_message);
+        }
+      });
+    }
+    
+    if (runnerResult.errors && runnerResult.errors.length > 0) {
+      errorMessages.push(...runnerResult.errors);
+    }
+
+    // Create a question that includes the error information
+    const errorText = errorMessages.length > 0 
+      ? errorMessages.join('\n').substring(0, 500) // Limit error text length
+      : 'My code has an error and I need help fixing it.';
+    
+    const question = `My code has errors when I run it. Here are the error messages:\n\n${errorText}\n\nCan you help me understand what's wrong and how to fix it?`;
+
+    // Open the help panel with hint mode and auto-trigger
+    setHelpMode('hint');
+    setShowHelpPanel(true);
+    
+    // Store the question for the GetHint component to use
+    setAutoTriggerQuestion(question);
   };
 
   const handleContinue = () => {
@@ -207,6 +209,31 @@ export function EditorPage() {
               const totalTodos = currentTodos.length;
               const completedTodosCount = completedTodos.size;
               
+              // Calculate the current task index based on completed tasks
+              const calculateCurrentTaskIndex = () => {
+                if (totalTodos > 0) {
+                  // For todos, use the current todo index
+                  return currentTodoIndex;
+                } else {
+                  // For main tasks, find the first incomplete task
+                  const totalTasks = scaffold.todo_list.length;
+                  // Check if all tasks are complete
+                  if (completedTasks.size >= totalTasks) {
+                    // All tasks complete, show the last task (0-indexed, so totalTasks - 1)
+                    return totalTasks - 1;
+                  } else {
+                    // Find the first incomplete task
+                    for (let i = 0; i < totalTasks; i++) {
+                      if (!completedTasks.has(i)) {
+                        return i;
+                      }
+                    }
+                    // Fallback: if somehow we get here, return the last task
+                    return totalTasks - 1;
+                  }
+                }
+              };
+              
               return totalTodos > 0 ? (
                 <div className="mb-4">
                   <ProgressIndicator
@@ -220,7 +247,7 @@ export function EditorPage() {
                   <ProgressIndicator
                     totalTasks={scaffold.todo_list.length}
                     completedTasks={completedTasks.size}
-                    currentTask={currentTask}
+                    currentTask={calculateCurrentTaskIndex()}
                   />
                 </div>
               );
@@ -229,68 +256,73 @@ export function EditorPage() {
             {/* Main Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column - Code Editor */}
-              <div className="lg:col-span-2 space-y-6">
-                <CodeEditor
-                  initialCode={studentCode}
-                  language={language}
-                  onChange={setStudentCode}
-                />
-
-                <div className="flex items-center justify-between gap-3 -mt-2">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => {
-                        if (showHelpPanel && helpMode === 'hint') {
-                          setShowHelpPanel(false);
-                        } else {
-                          setHelpMode('hint');
-                          setShowHelpPanel(true);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
-                        showHelpPanel && helpMode === 'hint' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
-                      }`}
-                    >
-                      <Lightbulb className="mr-2 h-4 w-4" />
-                      Get Hint
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (showHelpPanel && helpMode === 'example') {
-                          setShowHelpPanel(false);
-                        } else {
-                          setHelpMode('example');
-                          setShowHelpPanel(true);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
-                        showHelpPanel && helpMode === 'example' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
-                      }`}
-                    >
-                      <Code2 className="mr-2 h-4 w-4" />
-                      Examples
-                    </Button>
-                  </div>
-                  <RunButton
-                    onClick={handleRunTests}
-                    loading={isRunning}
-                    disabled={!studentCode || isRunning}
+              <div className="lg:col-span-2">
+                <div className="mb-6">
+                  <CodeEditor
+                    initialCode={studentCode}
+                    language={language}
+                    onChange={setStudentCode}
                   />
                 </div>
 
-                {/* Test Results */}
-                {runnerResult && (
-                  <div className="mt-6">
-                    <TestResults
-                      results={runnerResult}
-                      onRequestFeedback={handleGetFeedback}
+                {/* Buttons and Test Results in a flex column - no spacing issues */}
+                <div className="flex flex-col -mt-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => {
+                          if (showHelpPanel && helpMode === 'hint') {
+                            setShowHelpPanel(false);
+                          } else {
+                            setHelpMode('hint');
+                            setShowHelpPanel(true);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                          showHelpPanel && helpMode === 'hint' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                        }`}
+                      >
+                        <Lightbulb className="mr-2 h-4 w-4" />
+                        Get Hint
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (showHelpPanel && helpMode === 'example') {
+                            setShowHelpPanel(false);
+                          } else {
+                            setHelpMode('example');
+                            setShowHelpPanel(true);
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                          showHelpPanel && helpMode === 'example' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                        }`}
+                      >
+                        <Code2 className="mr-2 h-4 w-4" />
+                        Examples
+                      </Button>
+                    </div>
+                    <RunButton
+                      onClick={handleRunTests}
+                      loading={isRunning}
+                      disabled={!studentCode || isRunning}
                     />
                   </div>
-                )}
+
+                  {/* Test Results - appears inline, no extra spacing */}
+                  {runnerResult && (
+                    <div className="mt-2">
+                      <TestResults
+                        results={runnerResult}
+                        onRequestFeedback={handleGetFeedback}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Right Column - TODO Checklist */}
@@ -355,7 +387,12 @@ export function EditorPage() {
                 scaffold={scaffold}
                 currentTodoIndex={currentTodoIndex}
                 knownLanguage={proficientLanguage}
-                onClose={() => setShowHelpPanel(false)}
+                onClose={() => {
+                  setShowHelpPanel(false);
+                  setAutoTriggerQuestion(undefined);
+                }}
+                autoTrigger={!!autoTriggerQuestion}
+                autoTriggerQuestion={autoTriggerQuestion}
               />
             ) : (
               <GetConceptExample
