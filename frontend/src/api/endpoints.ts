@@ -53,18 +53,21 @@ export async function getHint(
   knownLanguage?: string,
   targetLanguage?: string
 ): Promise<HintSchema> {
+  // Ensure all values are serializable
+  const payload = {
+    task_description: String(taskDescription || ''),
+    concepts: Array.isArray(concepts) ? concepts.map(c => String(c)) : [],
+    student_code: String(studentCode || ''),
+    question: String(question || ''),
+    previous_hints: Array.isArray(previousHints) ? previousHints.map(h => String(h)) : [],
+    help_count: Number(helpCount) || 1,
+    known_language: knownLanguage ? String(knownLanguage) : null,
+    target_language: targetLanguage ? String(targetLanguage) : null,
+  };
+  
   return apiCall<HintSchema>('/get-hint', {
     method: 'POST',
-    body: JSON.stringify({
-      task_description: taskDescription,
-      concepts: concepts,
-      student_code: studentCode,
-      question: question,
-      previous_hints: previousHints,
-      help_count: helpCount,
-      known_language: knownLanguage || null,
-      target_language: targetLanguage || null,
-    }),
+    body: JSON.stringify(payload),
   });
 }
 

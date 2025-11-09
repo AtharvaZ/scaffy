@@ -281,7 +281,7 @@ export function LandingPage() {
         <div className="mx-auto max-w-[1440px] px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              © 2024 Scaffy
+              © 2025 Scaffy
             </p>
             <div className="flex items-center gap-6">
               <span className="text-xs text-gray-600 dark:text-gray-400">Built for students learning programming</span>
