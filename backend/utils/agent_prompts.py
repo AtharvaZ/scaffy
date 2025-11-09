@@ -125,22 +125,28 @@ def get_codegen_prompt(task_description: str, language: str, concepts: list, kno
     comparison_instruction = ""
     if known_language:
         comparison_instruction = f"""
-The student already knows {known_language}. When providing concept examples:
-- If a concept has a DIRECT equivalent in {known_language}, do NOT provide an example
-- If a concept is COMPLETELY NEW (no equivalent in {known_language}), provide a complete working example
-- If a concept is SIMILAR but with different syntax, provide a brief comparison
+The student already knows {known_language} and is learning {language}. 
+
+CRITICAL: When providing concept examples in the "concept_examples" field:
+- ALL examples MUST be written in {known_language} (the language the student knows)
+- Show how the concept works in {known_language} so the student can relate it to what they already know
+- This helps them understand the concept and then apply it to {language}
+
+When to provide examples:
+- If a concept exists in both languages but with different syntax → show {known_language} example
+- If a concept is COMPLETELY NEW (no equivalent in {known_language}) → show {known_language} equivalent or similar pattern
+- If a concept is SIMILAR but with different syntax → show {known_language} example for comparison
 
 Examples of when to include concept examples:
-- Threading/Concurrency primitives (if {known_language} doesn't have them)
-- LINQ/Streams (if coming from a language without them)
-- Delegates/Function pointers (completely different paradigm)
-- Async/await patterns (if new to the student)
+- Variable declarations (show {known_language} syntax)
+- Data types (show {known_language} types)
+- Functions/methods (show {known_language} structure)
+- Loops and conditionals (show {known_language} syntax)
+- Any concept that helps bridge understanding from {known_language} to {language}
 
-Examples of when NOT to include concept examples:
-- Basic loops (for, while) - syntax is similar across languages
-- Conditionals (if/else) - universal concept
-- Variable declarations - minor syntax difference
-- File I/O with similar APIs
+The examples should demonstrate the concept in {known_language} so the student can:
+1. Understand the concept in a familiar language
+2. Then apply that understanding to {language}
 """
     else:
         comparison_instruction = """

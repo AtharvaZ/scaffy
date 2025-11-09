@@ -81,6 +81,16 @@ class CodeExecutionResult(BaseModel):
     execution_time: str
 
 
+#--------Schema for PDF Text Extraction--------#
+
+#Output
+class PDFExtractionResult(BaseModel):
+    success: bool
+    extracted_text: str
+    page_count: int
+    error: Optional[str] = None
+
+
 #--------Schema for Concept Example (On-Demand)--------#
 
 #Input
@@ -97,5 +107,8 @@ class ConceptExampleResponse(BaseModel):
     code_example: str
     explanation: str
     comparison_to_known: Optional[str] = None  # If known_language provided
+
+
+# #--------Schema for Agent 4: Code Reviewer/Guidance--------#
 
 

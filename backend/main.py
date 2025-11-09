@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
@@ -18,6 +18,7 @@ from pyd_models.schemas import (
     HintSchema,
     CodeExecutionRequest,
     CodeExecutionResult,
+    PDFExtractionResult,
     ConceptExampleRequest,
     ConceptExampleResponse
 )
@@ -28,6 +29,7 @@ from agents.codegen_agent import CodegenAgent
 from agents.live_helper import LiveHelperAgent
 from agents.concept_example import ConceptExampleAgent
 from services.code_runner import get_code_runner
+from services.pdf_extractor import get_pdf_extractor
 
 load_dotenv()
 
@@ -210,6 +212,70 @@ async def run_code(request: CodeExecutionRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to execute code: {str(e)}"
+        )
+
+
+# ============================================
+# PDF TEXT EXTRACTION
+# ============================================
+
+@app.post("/extract-pdf-text", response_model=PDFExtractionResult)
+async def extract_pdf_text(file: UploadFile = File(...)):
+    """
+    Extract text from uploaded PDF file
+    
+    Supports PDF text extraction with:
+    - File validation (PDF only, max 10MB)
+    - Multi-page extraction
+    - Error handling for corrupted/invalid PDFs
+    """
+    try:
+        logger.info(f"Received PDF upload request: {file.filename} ({file.content_type})")
+        
+        pdf_extractor = get_pdf_extractor()
+        result = await pdf_extractor.extract_text(file)
+        
+        if result['success']:
+            logger.info(f"Successfully extracted text from PDF: {result['page_count']} pages, {len(result['extracted_text'])} characters")
+        else:
+            logger.warning(f"PDF extraction failed: {result['error']}")
+        
+        return PDFExtractionResult(**result)
+    
+    except Exception as e:
+        logger.error(f"PDF extraction error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to extract text from PDF: {str(e)}"
+        )
+
+
+# ============================================
+# ON-DEMAND CONCEPT EXAMPLES
+# ============================================
+
+@app.post("/get-concept-example", response_model=ConceptExampleResponse)
+async def get_concept_example(request: ConceptExampleRequest):
+    """
+    Generate on-demand concept examples for students
+    
+    Provides examples of programming concepts in the student's known language
+    to help them understand and apply concepts to the target language.
+    """
+    try:
+        logger.info(f"Generating on-demand example for concept: {request.concept} in {request.programming_language}")
+        
+        # Call the concept example agent
+        result = concept_example_agent.generate_example(request)
+        
+        logger.info(f"Successfully generated {result.example_type} example for {request.concept}")
+        return result
+    
+    except Exception as e:
+        logger.error(f"Failed to generate concept example: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate concept example: {str(e)}"
         )
 
 

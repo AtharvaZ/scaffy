@@ -148,12 +148,53 @@ export async function parseAndScaffold(
       acc[`task_${index}`] = task.concepts;
       return acc;
     }, {} as Record<string, string[]>),
+    // Store concept examples per task
+    task_concept_examples: starterCodes.reduce((acc, code, index) => {
+      if (code.concept_examples) {
+        acc[`task_${index}`] = code.concept_examples;
+      }
+      return acc;
+    }, {} as Record<string, Record<string, string>>),
   };
   
   return {
     parser_output: taskBreakdown,
     scaffold_package: scaffoldPackage,
   };
+}
+
+// Extract text from PDF - matches backend /extract-pdf-text endpoint
+export async function extractPdfText(file: File): Promise<{
+  success: boolean;
+  extracted_text: string;
+  page_count: number;
+  error: string | null;
+}> {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const url = `${API_BASE_URL}/extract-pdf-text`;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header - browser will set it with boundary for FormData
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Network error: Cannot connect to ${url}. Check if backend is running and CORS is configured.`);
+    }
+    throw error;
+  }
 }
 
 // Chat endpoint - uses get-hint endpoint

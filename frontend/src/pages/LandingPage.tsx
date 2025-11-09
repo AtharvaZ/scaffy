@@ -1,51 +1,23 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { DarkModeToggle } from '../components/DarkModeToggle';
-import { Code2, Zap, CheckCircle2, ArrowRight } from 'lucide-react';
-import PixelBlast from '../components/PixelBlast';
+import { EncryptedText } from '../components/ui/encrypted-text';
+import { CodeBreakdownAnimation } from '../components/CodeBreakdownAnimation';
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-background relative">
-      {/* PixelBlast Full Page Background - Component inspired by github.com/zavalit/bayer-dithering-webgl-demo */}
-      <div 
-        className="fixed inset-0 -z-10"
-        style={{ 
-          width: '100vw', 
-          height: '100vh'
-        }}
-      >
-        <PixelBlast
-          variant="circle"
-          pixelSize={6}
-          color="#B19EEF"
-          patternScale={3}
-          patternDensity={1.2}
-          pixelSizeJitter={0.5}
-          enableRipples
-          rippleSpeed={0.4}
-          rippleThickness={0.12}
-          rippleIntensityScale={1.5}
-          liquid
-          liquidStrength={0.12}
-          liquidRadius={1.2}
-          liquidWobbleSpeed={5}
-          speed={0.6}
-          edgeFade={0.25}
-          transparent
-          style={{ width: '100%', height: '100%' }}
-        />
-      </div>
-      
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
-      <header className="border-b border-black/5 dark:border-border">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+      <header className="border-b border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <h1 className="text-xl font-semibold tracking-tight text-black dark:text-foreground">Scaffy</h1>
-            <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center">
+              <span className="text-[15px] font-semibold text-black dark:text-white">Scaffy</span>
+            </Link>
+            <div className="flex items-center gap-8">
               <DarkModeToggle />
               <Link to="/task">
-                <Button variant="outline" size="sm">
+                <Button size="sm" className="h-8 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 text-[13px] px-4 font-medium shadow-md shadow-blue-500/20">
                   Get Started
                 </Button>
               </Link>
@@ -55,143 +27,266 @@ export function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative mx-auto max-w-7xl px-6 py-24 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-3xl text-center relative z-10">
-          <h2 className="text-5xl font-semibold tracking-tight text-black dark:text-foreground sm:text-6xl">
-            Learn New Programming Languages
-            <span className="block text-gray-600 dark:text-muted-foreground">Without Getting Stuck</span>
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-muted-foreground">
-            Break down complex assignments into manageable tasks with real-time compilation feedback, 
-            instant test validation, and AI-powered guidance.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link to="/task">
-              <Button size="lg" className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
-                Start Learning
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+      <section className="relative bg-white dark:bg-black min-h-screen flex items-center">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8 w-full">
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 className="text-[80px] leading-[1.1] font-bold tracking-[-0.04em]">
+              <EncryptedText
+                text="Learn programming."
+                encryptedClassName="text-gray-400 dark:text-gray-600"
+                revealedClassName="text-black dark:text-white"
+                triggerOnHover={true}
+              />
+              <br />
+              <EncryptedText
+                text="Skip the struggle."
+                encryptedClassName="text-gray-400 dark:text-gray-600"
+                revealedClassName="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent"
+                triggerOnHover={true}
+              />
+            </h1>
+            
+            <p className="mt-6 text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              AI-powered scaffolding breaks down assignments into tasks. Live execution catches errors. 
+              Intelligent hints help you learn.
+            </p>
+            
+            <div className="mt-10 flex items-center justify-center gap-3">
+              <Link to="/task">
+                <Button className="h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 text-[15px] px-6 font-medium shadow-lg shadow-blue-500/30">
+                  Start Building
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      {/* Use Cases */}
+      <section className="py-20 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Smart Scaffolding */}
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="mb-8">
+                <span className="text-2xl">📝</span>
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">
+                Smart Scaffolding
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Break down complex assignments into manageable tasks with AI-powered guidance and syntax hints.
+              </p>
+            </div>
+
+            {/* Live Execution */}
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="mb-8">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">
+                Live Execution
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Compile and run code in real-time. Get instant feedback on errors and test results as you type.
+              </p>
+            </div>
+
+            {/* AI Guidance */}
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="mb-8">
+                <span className="text-2xl">🤖</span>
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-foreground">
+                AI Guidance
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Progressive hints that adapt to your pace. Learn concepts deeply, don't just copy code.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Problem Statement */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-lg border border-black/5 dark:border-border bg-gray-50 dark:bg-card p-8 vercel-shadow">
-            <h3 className="text-2xl font-semibold tracking-tight text-black dark:text-foreground mb-4">
-              The Problem
-            </h3>
-            <p className="text-gray-700 dark:text-muted-foreground leading-relaxed">
-              Students learning new programming languages face dense assignments requiring both 
-              complex logic <strong>AND</strong> unfamiliar syntax. They either copy from AI without 
-              learning or give up entirely.
+      {/* Code Breakdown Animation */}
+      <section className="py-20 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-[48px] leading-[1.1] font-bold tracking-[-0.02em] mb-4">
+              <span className="text-black dark:text-white">Break down </span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">complex code</span>
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Watch how Scaffy transforms overwhelming assignments into manageable tasks
             </p>
           </div>
+          <div className="max-w-5xl mx-auto">
+            <CodeBreakdownAnimation />
+          </div>
         </div>
       </section>
 
-      {/* Solution Section */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-2xl">
-          <h3 className="text-2xl font-semibold tracking-tight text-black dark:text-foreground mb-8 text-center">
-            Our Solution
-          </h3>
-          <div className="rounded-lg border border-black/5 dark:border-border bg-white dark:bg-card p-8 vercel-shadow">
-            <p className="text-gray-700 dark:text-muted-foreground leading-relaxed mb-4">
-              <strong>Assignment Scaffolder PLUS Live Execution Engine</strong> - Not only breaks 
-              down assignments into manageable tasks with syntax guidance, but also provides:
+      {/* Your product, delivered */}
+      <section className="py-20 bg-gray-50/50 dark:bg-gray-900/20">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-[48px] leading-[1.1] font-bold tracking-[-0.02em] mb-4">
+              <span className="text-black dark:text-white">Your learning, </span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">accelerated.</span>
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              While ChatGPT generates code, Scaffy compiles it, runs it, and explains your specific errors.
             </p>
-            <ul className="space-y-3 text-gray-700 dark:text-muted-foreground">
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-black dark:text-foreground mt-0.5 flex-shrink-0" />
-                <span>Real-time compilation feedback</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-black dark:text-foreground mt-0.5 flex-shrink-0" />
-                <span>Instant test validation</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-black dark:text-foreground mt-0.5 flex-shrink-0" />
-                <span>Concept mastery tracking as students code</span>
-              </li>
-            </ul>
-            <div className="mt-6 p-4 bg-black/5 dark:bg-muted rounded-md">
-              <p className="text-sm font-medium text-black dark:text-foreground">
-                The Killer Addition:
+          </div>
+
+          {/* Feature showcase */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="font-mono text-xs text-muted-foreground mb-4">STEP 1</div>
+              <h3 className="text-xl font-semibold mb-3 text-foreground">
+                Assignment Breakdown
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Upload your assignment and watch as AI breaks it into clear, manageable tasks with syntax guidance for your target language.
               </p>
-              <p className="text-sm text-gray-700 dark:text-muted-foreground mt-1">
-                While ChatGPT can generate code, it can't compile it, run it, or tell you 
-                <strong> WHY</strong> your specific error happened. <strong>We can.</strong>
+            </div>
+
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="font-mono text-xs text-muted-foreground mb-4">STEP 2</div>
+              <h3 className="text-xl font-semibold mb-3 text-foreground">
+                Real-Time Feedback
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Write code and see compilation errors instantly. Run tests to validate your solution without leaving the editor.
+              </p>
+            </div>
+
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="font-mono text-xs text-muted-foreground mb-4">STEP 3</div>
+              <h3 className="text-xl font-semibold mb-3 text-foreground">
+                Intelligent Hints
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Stuck? Get progressive hints that adapt to your attempts. Learn the 'why' behind solutions, not just the 'how'.
+              </p>
+            </div>
+
+            <div className="group relative rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300 hover:border-blue-500/70 dark:hover:border-blue-400/70 hover:shadow-[0_0_50px_rgba(59,130,246,0.6),inset_0_0_0_1px_rgba(59,130,246,0.3)] dark:hover:shadow-[0_0_50px_rgba(59,130,246,0.5),inset_0_0_0_1px_rgba(59,130,246,0.3)] hover:scale-[1.02]">
+              <div className="font-mono text-xs text-muted-foreground mb-4">STEP 4</div>
+              <h3 className="text-xl font-semibold mb-3 text-foreground">
+                Track Progress
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Monitor concept mastery as you code. Build confidence as you complete tasks and understand new patterns.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-5xl">
-          <h3 className="text-2xl font-semibold tracking-tight text-black dark:text-foreground mb-12 text-center">
-            Features
-          </h3>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="rounded-lg border border-black/5 dark:border-border bg-white dark:bg-card p-6 vercel-shadow">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-black dark:bg-primary">
-                <Code2 className="h-6 w-6 text-white" />
+      {/* Comparison Section */}
+      <section className="py-20 border-t border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-[48px] leading-[1.1] font-bold tracking-[-0.02em] text-black dark:text-white mb-4">
+              The Scaffy Difference
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Traditional learning vs. the Scaffy approach
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Without Scaffy */}
+            <div className="rounded-2xl border border-gray-300/50 dark:border-gray-700/50 bg-card p-8">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 mb-3">
+                  <span className="text-red-600 dark:text-red-400">✕</span>
+                </div>
+                <h3 className="text-xl font-bold text-black dark:text-white">Without Scaffy</h3>
               </div>
-              <h4 className="text-lg font-semibold text-black dark:text-foreground mb-2">Smart Scaffolding</h4>
-              <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                Break down complex assignments into manageable, step-by-step tasks with syntax guidance.
-              </p>
+              <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-1">•</span>
+                  <span>Overwhelming assignments with no clear starting point</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-1">•</span>
+                  <span>Hours debugging syntax errors in unfamiliar languages</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-1">•</span>
+                  <span>Copy-paste from AI without understanding</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-1">•</span>
+                  <span>No feedback until final submission</span>
+                </li>
+              </ul>
             </div>
-            <div className="rounded-lg border border-black/5 dark:border-border bg-white dark:bg-card p-6 vercel-shadow">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-black dark:bg-primary">
-                <Zap className="h-6 w-6 text-white" />
+
+            {/* With Scaffy */}
+            <div className="rounded-2xl border border-blue-300/50 dark:border-blue-700/50 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-black p-8">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 mb-3">
+                  <span className="text-blue-600 dark:text-blue-400">✓</span>
+                </div>
+                <h3 className="text-xl font-bold text-black dark:text-white">With Scaffy</h3>
               </div>
-              <h4 className="text-lg font-semibold text-black dark:text-foreground mb-2">Live Execution</h4>
-              <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                Compile and run your code in real-time with instant feedback on errors and test results.
-              </p>
-            </div>
-            <div className="rounded-lg border border-black/5 dark:border-border bg-white dark:bg-card p-6 vercel-shadow">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-black dark:bg-primary">
-                <CheckCircle2 className="h-6 w-6 text-white" />
-              </div>
-              <h4 className="text-lg font-semibold text-black dark:text-foreground mb-2">AI Guidance</h4>
-              <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                Get progressive hints and explanations that adapt to your learning pace and attempts.
-              </p>
+              <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Clear breakdown into manageable tasks</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Instant compilation feedback as you type</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Progressive hints that promote understanding</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-1">•</span>
+                  <span>Real-time test validation and error explanations</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-2xl text-center">
-          <h3 className="text-2xl font-semibold tracking-tight text-black dark:text-foreground mb-4">
-            Ready to Start Learning?
-          </h3>
-          <p className="text-gray-600 dark:text-muted-foreground mb-8">
-            Experience the future of programming education with real-time feedback and AI-powered guidance.
-          </p>
-          <Link to="/task">
-            <Button size="lg" className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
-              Get Started
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+      <section className="py-32 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
+          <div className="text-center">
+            <h2 className="text-[56px] leading-[1.1] font-bold tracking-[-0.02em] mb-6">
+              <span className="text-black dark:text-white">Start building </span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">today.</span>
+            </h2>
+            <div className="flex items-center justify-center gap-3">
+              <Link to="/task">
+                <Button className="h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 text-[15px] px-6 font-medium shadow-lg shadow-blue-500/30">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-black/5 dark:border-border mt-24">
-        <div className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:px-12">
-          <p className="text-center text-sm text-gray-600 dark:text-muted-foreground">
-            © 2024 Scaffy. Built for students learning new programming languages.
-          </p>
+      <footer className="border-t border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8 py-12">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              © 2024 Scaffy
+            </p>
+            <div className="flex items-center gap-6">
+              <span className="text-xs text-gray-600 dark:text-gray-400">Built for students learning programming</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

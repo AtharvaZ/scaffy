@@ -5,3 +5,5 @@ python-dotenv==1.0.0
 pydantic==2.5.0
 requests==2.31.0
 dotenv==1.0.0
+pdfplumber==0.10.3
+python-multipart==0.0.6
