@@ -40,9 +40,11 @@ export interface ScaffoldPackage {
   per_task_hints: Record<string, string[]>;
   code_snippet?: string;
   instructions?: string;
+  todos?: string[]; // TODOs from starter code for current task
   concept_examples?: Record<string, string>;
   task_concepts?: Record<string, string[]>; // Task concepts indexed by task ID
   task_concept_examples?: Record<string, Record<string, string>>; // Concept examples per task
+  task_todos?: Record<string, string[]>; // TODOs per task indexed by task ID
 }
 
 // Hint Schema (from backend)

@@ -71,6 +71,7 @@ class HintSchema(BaseModel):
 class CodeExecutionRequest(BaseModel):
     code: str
     language: str
+    stdin: Optional[str] = None  # Optional stdin input for input() calls
 
 #Output
 class CodeExecutionResult(BaseModel):

@@ -142,13 +142,20 @@ Context of what the student is trying to do:
 Tailor your example to be relevant to their use case.
 """
         
-        return f"""You are helping a student learn the concept of "{concept}" in {language}.
+        # Determine which language to use for the example
+        example_language = known_language if known_language else language
+        language_context = f"in {language}" if known_language else ""
+        
+        return f"""You are helping a student learn the concept of "{concept}" {language_context}.
+The student is learning {language}, but they already know {example_language if known_language else language}.
 
 {context_section}
 {comparison_section}
 
 TASK:
-Generate a clear, working code example for "{concept}".
+Generate a clear, working code example for "{concept}" in {example_language}.
+CRITICAL: The code_example must be written in {example_language}, NOT in {language}.
+This helps the student understand the concept using a language they already know.
 
 Example Type: {example_type}
 Expected Length: {example_length}
@@ -157,12 +164,13 @@ Expected Length: {example_length}
 
 REQUIREMENTS:
 1. Code must be COMPLETE and RUNNABLE (or a valid syntax template for basic concepts)
-2. Use descriptive variable names
-3. Include brief inline comments explaining key parts
-4. Make it practical and realistic (not foo/bar examples)
-5. Keep it focused on ONLY this concept
+2. Code must be written in {example_language} (the student's known language)
+3. Use descriptive variable names
+4. Include brief inline comments explaining key parts
+5. Make it practical and realistic (not foo/bar examples)
+6. Keep it focused on ONLY this concept
 
-EXAMPLE FORMATS:
+EXAMPLE FORMATS (examples should be in {example_language}):
 
 For BASIC concepts (1-3 lines):
 ```
@@ -196,6 +204,8 @@ public static void IncrementCounter() {{
 
 // This demonstrates thread-safe counter increments
 ```
+
+REMEMBER: All code examples must be written in {example_language}, not in {language}.
 
 Return ONLY a valid JSON object with this structure:
 {{

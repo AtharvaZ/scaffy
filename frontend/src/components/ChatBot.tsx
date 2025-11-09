@@ -18,10 +18,12 @@ interface ChatBotProps {
   language: string;
   currentTask: number;
   scaffold?: ScaffoldPackage;
+  currentTodoIndex?: number;
+  onTodoIndexChange?: (index: number) => void;
   onClose: () => void;
 }
 
-export function ChatBot({ code, language, currentTask, scaffold, onClose }: ChatBotProps) {
+export function ChatBot({ code, language, currentTask, scaffold, currentTodoIndex = 0, onTodoIndexChange, onClose }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -48,6 +50,16 @@ export function ChatBot({ code, language, currentTask, scaffold, onClose }: Chat
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Get current TODO if available
+    const todos = scaffold?.task_todos?.[`task_${currentTask}`] || scaffold?.todos || [];
+    const currentTodo = todos[currentTodoIndex] || null;
+    
+    // Always include current TODO in the question if available (as per spec)
+    let questionText = input.trim();
+    if (currentTodo) {
+      questionText = `I'm stuck on: ${currentTodo}. ${questionText}`;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -62,8 +74,9 @@ export function ChatBot({ code, language, currentTask, scaffold, onClose }: Chat
 
     try {
       // Try to use the chat API endpoint (which uses get-hint backend endpoint)
+      // Pass the question with current TODO included
       const result = await safeApiCall(
-        () => chatWithAI(userInput, code, language, currentTask.toString(), scaffold, previousHints, helpCount),
+        () => chatWithAI(questionText, code, language, currentTask.toString(), scaffold, previousHints, helpCount),
         'Failed to get AI response'
       );
 

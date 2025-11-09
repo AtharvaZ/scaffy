@@ -126,10 +126,20 @@ async def generate_starter_code(request: BoilerPlateCodeSchema):
         return result
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate starter code: {str(e)}"
-        )
+        error_str = str(e).lower()
+        logger.error(f"Failed to generate starter code: {e}", exc_info=True)
+        
+        # Provide user-friendly error messages for API errors
+        if "rate limit" in error_str or "overloaded" in error_str or "529" in error_str or "temporarily unavailable" in error_str:
+            raise HTTPException(
+                status_code=503,  # Service Unavailable
+                detail="The AI service is temporarily overloaded. Please try again in a few moments. If the issue persists, wait a bit longer and try again."
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate starter code: {str(e)}"
+            )
 
 
 # ============================================
@@ -201,7 +211,8 @@ async def run_code(request: CodeExecutionRequest):
         logger.info(f"Executing {request.language} code ({len(request.code)} characters)")
         
         code_runner = get_code_runner()
-        result = code_runner.run_code(request.code, request.language)
+        # Pass stdin if provided, otherwise use default test values
+        result = code_runner.run_code(request.code, request.language, stdin=request.stdin)
         
         logger.info(f"Execution completed: success={result['success']}, exit_code={result['exit_code']}")
         

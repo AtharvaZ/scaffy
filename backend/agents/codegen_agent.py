@@ -52,20 +52,34 @@ class CodegenAgent:
                     data["code_snippet"] = data["code"]
                     del data["code"]
                     
-                if "concept_examples" not in data:
-                    data["concept_examples"] = None
+                # Always set concept_examples to null - examples are generated on-demand
+                data["concept_examples"] = None
 
                 logger.info(f"Successfully generated code on attempt {attempt + 1}")
                 return StarterCode(**data)
                 
-            except (ValueError, KeyError) as e:
-                last_error = e
-                logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+            except Exception as e:
+                # Check if it's an API error (rate limit, overloaded, etc.)
+                error_str = str(e).lower()
+                if "rate limit" in error_str or "overloaded" in error_str or "529" in error_str:
+                    # API errors are already handled by the client with retries
+                    # Just re-raise them with a user-friendly message
+                    logger.error(f"API error during code generation: {str(e)}")
+                    raise Exception(f"API service is temporarily unavailable. Please try again in a few moments. Error: {str(e)}")
                 
-                # If not the last attempt, add a note to the prompt to be more strict
-                if attempt < self.max_retries - 1:
-                    prompt += f"\n\nIMPORTANT: Previous attempt failed due to invalid JSON format. Ensure your response is ONLY valid JSON with no additional text."
-                continue
+                # For JSON parsing errors, retry with updated prompt
+                if isinstance(e, (ValueError, KeyError)):
+                    last_error = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+                    
+                    # If not the last attempt, add a note to the prompt to be more strict
+                    if attempt < self.max_retries - 1:
+                        prompt += f"\n\nIMPORTANT: Previous attempt failed due to invalid JSON format. Ensure your response is ONLY valid JSON with no additional text."
+                    continue
+                else:
+                    # For other errors, don't retry
+                    logger.error(f"Unexpected error during code generation: {str(e)}")
+                    raise
         
         # If all retries failed, raise the last error
         logger.error(f"All {self.max_retries} attempts failed")

@@ -71,7 +71,8 @@ export async function getHint(
 // Run code execution
 export async function runCode(
   code: string,
-  language: string
+  language: string,
+  stdin?: string
 ): Promise<{
   success: boolean;
   output: string;
@@ -84,6 +85,7 @@ export async function runCode(
     body: JSON.stringify({
       code: code,
       language: language,
+      stdin: stdin || null,
     }),
   });
 }
@@ -142,6 +144,7 @@ export async function parseAndScaffold(
     per_task_hints: {}, // Not available from backend
     code_snippet: starterCodes[0]?.code_snippet,
     instructions: starterCodes[0]?.instructions,
+    todos: starterCodes[0]?.todos, // TODOs for first task
     concept_examples: starterCodes[0]?.concept_examples,
     // Store task concepts for easy access
     task_concepts: taskBreakdown.tasks.reduce((acc, task, index) => {
@@ -155,6 +158,13 @@ export async function parseAndScaffold(
       }
       return acc;
     }, {} as Record<string, Record<string, string>>),
+    // Store TODOs per task
+    task_todos: starterCodes.reduce((acc, code, index) => {
+      if (code.todos) {
+        acc[`task_${index}`] = code.todos;
+      }
+      return acc;
+    }, {} as Record<string, string[]>),
   };
   
   return {
@@ -195,6 +205,30 @@ export async function extractPdfText(file: File): Promise<{
     }
     throw error;
   }
+}
+
+// Get concept example - matches backend /get-concept-example endpoint
+export async function getConceptExample(
+  concept: string,
+  programmingLanguage: string,
+  knownLanguage?: string,
+  context?: string
+): Promise<{
+  concept: string;
+  example_type: 'basic_syntax' | 'intermediate_pattern' | 'advanced_pattern';
+  code_example: string;
+  explanation: string;
+  comparison_to_known: string | null;
+}> {
+  return apiCall('/get-concept-example', {
+    method: 'POST',
+    body: JSON.stringify({
+      concept: concept,
+      programming_language: programmingLanguage,
+      known_language: knownLanguage || null,
+      context: context || null,
+    }),
+  });
 }
 
 // Chat endpoint - uses get-hint endpoint

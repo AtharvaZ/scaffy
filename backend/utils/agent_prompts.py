@@ -121,49 +121,13 @@ def get_codegen_prompt(task_description: str, language: str, concepts: list, kno
     """
     concepts_str = ", ".join(concepts)
     
-    # Add context about known language if provided
+    # Note: Concept examples are now generated on-demand, not during initial code generation
+    # This reduces processing time and API load
     comparison_instruction = ""
     if known_language:
         comparison_instruction = f"""
-The student already knows {known_language} and is learning {language}. 
-
-CRITICAL: When providing concept examples in the "concept_examples" field:
-- ALL examples MUST be written in {known_language} (the language the student knows)
-- Show how the concept works in {known_language} so the student can relate it to what they already know
-- This helps them understand the concept and then apply it to {language}
-
-When to provide examples:
-- If a concept exists in both languages but with different syntax → show {known_language} example
-- If a concept is COMPLETELY NEW (no equivalent in {known_language}) → show {known_language} equivalent or similar pattern
-- If a concept is SIMILAR but with different syntax → show {known_language} example for comparison
-
-Examples of when to include concept examples:
-- Variable declarations (show {known_language} syntax)
-- Data types (show {known_language} types)
-- Functions/methods (show {known_language} structure)
-- Loops and conditionals (show {known_language} syntax)
-- Any concept that helps bridge understanding from {known_language} to {language}
-
-The examples should demonstrate the concept in {known_language} so the student can:
-1. Understand the concept in a familiar language
-2. Then apply that understanding to {language}
-"""
-    else:
-        comparison_instruction = """
-Provide examples for all types of programming concepts, including:
-
-1. **Basic concepts** (show very simple, clear examples):
-   - Loops
-   - Conditionals
-   - Functions
-   - Basic data structures (arrays, lists, dictionaries, etc.)
-
-2. **Advanced concepts** (provide well-explained, working examples):
-   - Non-intuitive patterns like threading, async/await, delegates
-   - Language-specific features such as LINQ, generics, and special syntax
-   - Complex patterns that need demonstration
-
-Ensure that basic examples are simple and concise, while advanced examples demonstrate practical usage and subtleties.
+The student already knows {known_language} and is learning {language}.
+This context is provided for reference, but concept examples will be generated on-demand when requested.
 """
     
     return f"""You are helping a student learn programming by providing starter code templates.
@@ -181,55 +145,23 @@ CRITICAL RULES FOR STARTER CODE:
 5. Do NOT implement the actual logic - that's for the student to learn!
 
 CRITICAL RULES FOR CONCEPT EXAMPLES:
-1. Decide intelligently which concepts need examples (use the guidance above)
-2. Examples must be COMPLETE WORKING CODE (10-20 lines), not just syntax snippets
-3. Show the FULL PATTERN with a similar but different context
-4. Use DIFFERENT variable names and scenarios than the actual task
-5. Include brief explanation of what the example demonstrates
-6. If no examples are needed, set concept_examples to null or empty dict
+1. DO NOT generate concept examples during initial code generation
+2. Concept examples will be generated on-demand when the user requests them
+3. ALWAYS set concept_examples to null to speed up processing
+4. This reduces API load and improves response time
 
-WHAT MAKES A GOOD CONCEPT EXAMPLE:
-❌ BAD (too minimal):
-"Threading": "Thread t = new Thread(() => {{}});"
-
-✅ GOOD (complete working pattern):
-"Threading": "// Complete example of creating and managing threads\\nprivate static void WorkerTask(int taskId) {{\\n    Console.WriteLine($\\"Task {{taskId}} starting\\");\\n    Thread.Sleep(1000);\\n    Console.WriteLine($\\"Task {{taskId}} completed\\");\\n}}\\n\\nstatic void Main() {{\\n    Thread thread1 = new Thread(() => WorkerTask(1));\\n    Thread thread2 = new Thread(() => WorkerTask(2));\\n    \\n    thread1.Start();\\n    thread2.Start();\\n    \\n    thread1.Join(); // Wait for completion\\n    thread2.Join();\\n}}\\n\\nℹ️ This shows how to create multiple threads, start them, and wait for completion"
-
-❌ BAD (just syntax):
-"Thread Safety": "lock(obj) {{ /* code */ }}"
-
-✅ GOOD (complete working pattern):
-"Thread Safety": "// Thread-safe counter example\\nprivate static object lockObj = new object();\\nprivate static int counter = 0;\\n\\npublic static void IncrementCounter() {{\\n    lock(lockObj) {{\\n        counter++;\\n        Console.WriteLine($\\"Counter: {{counter}}\\");\\n    }}\\n}}\\n\\npublic static int GetCounter() {{\\n    lock(lockObj) {{\\n        return counter;\\n    }}\\n}}\\n\\nℹ️ This demonstrates using lock() to protect shared data access"
+NOTE: Concept examples are generated on-demand when users click "Show Example" on specific concepts.
+Do not include concept_examples in your response - always set it to null.
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
     "code_snippet": "the complete starter code template with TODO comments",
     "instructions": "brief instructions on how to approach completing the TODOs",
     "todos": ["list of TODO items in the order they should be completed"],
-    "concept_examples": {{
-        "concept_name": "// Complete working code example (10-20 lines)\\n// Use similar but different context\\n// Include what it demonstrates at the end"
-    }}
-}}
-
-EXAMPLE concept_examples for C# threading (if student knows Python):
-{{
-    "Threading": "// Complete example: Creating and managing multiple threads\\nprivate static void ProcessOrder(int orderId) {{\\n    Console.WriteLine($\\"Processing order {{orderId}}\\");\\n    Thread.Sleep(500); // Simulate work\\n    Console.WriteLine($\\"Order {{orderId}} completed\\");\\n}}\\n\\nstatic void Main() {{\\n    Thread order1 = new Thread(() => ProcessOrder(1));\\n    Thread order2 = new Thread(() => ProcessOrder(2));\\n    Thread order3 = new Thread(() => ProcessOrder(3));\\n    \\n    order1.Start();\\n    order2.Start();\\n    order3.Start();\\n    \\n    order1.Join(); // Wait for all to finish\\n    order2.Join();\\n    order3.Join();\\n    \\n    Console.WriteLine(\\"All orders processed\\");\\n}}\\n\\nℹ️ This shows how to create multiple threads, start them concurrently, and wait for completion",
-    
-    "Thread Safety": "// Complete example: Thread-safe list operations\\nprivate static object listLock = new object();\\nprivate static List<string> sharedList = new List<string>();\\n\\npublic static void AddItem(string item) {{\\n    lock(listLock) {{\\n        if (!sharedList.Contains(item)) {{\\n            sharedList.Add(item);\\n            Console.WriteLine($\\"Added: {{item}}\\");\\n        }}\\n    }}\\n}}\\n\\npublic static void RemoveItem(string item) {{\\n    lock(listLock) {{\\n        if (sharedList.Remove(item)) {{\\n            Console.WriteLine($\\"Removed: {{item}}\\");\\n        }}\\n    }}\\n}}\\n\\npublic static int GetCount() {{\\n    lock(listLock) {{\\n        return sharedList.Count;\\n    }}\\n}}\\n\\nℹ️ This demonstrates protecting shared data with lock() for thread-safe operations"
-}}
-
-EXAMPLE concept_examples for LINQ (C++ student learning C#):
-{{
-    "LINQ queries": "// Complete example: Filtering and transforming data\\nclass Product {{\\n    public string Name {{ get; set; }}\\n    public decimal Price {{ get; set; }}\\n    public string Category {{ get; set; }}\\n}}\\n\\nstatic void Main() {{\\n    List<Product> products = new List<Product> {{\\n        new Product {{ Name = \\"Laptop\\", Price = 999, Category = \\"Electronics\\" }},\\n        new Product {{ Name = \\"Mouse\\", Price = 25, Category = \\"Electronics\\" }},\\n        new Product {{ Name = \\"Desk\\", Price = 299, Category = \\"Furniture\\" }}\\n    }};\\n    \\n    // Filter products over $50\\n    var expensive = products.Where(p => p.Price > 50);\\n    \\n    // Get only names\\n    var names = expensive.Select(p => p.Name);\\n    \\n    // Sort by price\\n    var sorted = expensive.OrderBy(p => p.Price);\\n    \\n    foreach(var product in sorted) {{\\n        Console.WriteLine($\\"{{product.Name}}: ${{product.Price}}\\");\\n    }}\\n}}\\n\\nℹ️ This shows LINQ methods: Where() for filtering, Select() for projection, OrderBy() for sorting"
-}}
-
-EXAMPLE concept_examples set to null (if all concepts are familiar):
-{{
-    "code_snippet": "...",
-    "instructions": "...",
-    "todos": [...],
     "concept_examples": null
 }}
+
+IMPORTANT: Always set "concept_examples" to null. Examples are generated on-demand when users request them.
 
 Example TODO comment style in the starter code:
 // TODO: Implement input validation here
@@ -241,7 +173,7 @@ CRITICAL RESPONSE FORMAT:
 - Do NOT wrap in markdown code blocks (no ``` or ```json)
 - Do NOT include any explanation before or after the JSON
 - The "code_snippet" field should contain code as a string with \\n for newlines
-- In concept_examples, use \\n for newlines within example code strings
+- Always set "concept_examples" to null (not an empty dict)
 - Ensure all strings are properly escaped (especially quotes and backslashes)
 - Start your response with {{ and end with }}
 

@@ -7,12 +7,14 @@ import { TestResults } from '../components/TestResults';
 import { FeedbackCard } from '../components/FeedbackCard';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 import { SuccessCelebration } from '../components/SuccessCelebration';
-import { ChatBot } from '../components/ChatBot';
+import { GetHint } from '../components/GetHint';
+import { GetConceptExample } from '../components/GetConceptExample';
+import { TodoChecklist } from '../components/TodoChecklist';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { runCode, getFeedback } from '../api/endpoints';
 import { safeApiCall } from '../api/client';
 import { Button } from '../components/ui/button';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Lightbulb, Code2 } from 'lucide-react';
 
 export function EditorPage() {
   const navigate = useNavigate();
@@ -30,6 +32,7 @@ export function EditorPage() {
     assignmentId,
     startTime,
     language,
+    proficientLanguage,
     isLoading,
     error,
     addCompletedTask,
@@ -43,7 +46,10 @@ export function EditorPage() {
     setError,
   } = useAppStore();
 
-  const [showChatBot, setShowChatBot] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
+  const [helpMode, setHelpMode] = useState<'hint' | 'example'>('hint');
+  const [currentTodoIndex, setCurrentTodoIndex] = useState(0);
+  const [completedTodos, setCompletedTodos] = useState<Set<number>>(new Set());
 
   // Redirect if no scaffold
   useEffect(() => {
@@ -196,51 +202,122 @@ export function EditorPage() {
             )}
 
             {/* Progress Indicator */}
-            <div className="mb-4">
-              <ProgressIndicator
-                totalTasks={scaffold.todo_list.length}
-                completedTasks={completedTasks.size}
-                currentTask={currentTask}
-              />
-            </div>
+            {scaffold && (() => {
+              const currentTodos = scaffold.task_todos?.[`task_${currentTask}`] || scaffold.todos || [];
+              const totalTodos = currentTodos.length;
+              const completedTodosCount = completedTodos.size;
+              
+              return totalTodos > 0 ? (
+                <div className="mb-4">
+                  <ProgressIndicator
+                    totalTasks={totalTodos}
+                    completedTasks={completedTodosCount}
+                    currentTask={currentTodoIndex}
+                  />
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <ProgressIndicator
+                    totalTasks={scaffold.todo_list.length}
+                    completedTasks={completedTasks.size}
+                    currentTask={currentTask}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Main Layout */}
-            <div className="space-y-6">
-              {/* Code Editor */}
-              <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Code Editor */}
+              <div className="lg:col-span-2 space-y-6">
                 <CodeEditor
                   initialCode={studentCode}
                   language={language}
                   onChange={setStudentCode}
                 />
 
-                <div className="flex items-center justify-between">
-                  <Button
-                    onClick={() => setShowChatBot(!showChatBot)}
-                    variant="outline"
-                    className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    {showChatBot ? 'Close Help' : 'Get Help'}
-                  </Button>
+                <div className="flex items-center justify-between gap-3 -mt-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        if (showHelpPanel && helpMode === 'hint') {
+                          setShowHelpPanel(false);
+                        } else {
+                          setHelpMode('hint');
+                          setShowHelpPanel(true);
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                        showHelpPanel && helpMode === 'hint' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                      }`}
+                    >
+                      <Lightbulb className="mr-2 h-4 w-4" />
+                      Get Hint
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (showHelpPanel && helpMode === 'example') {
+                          setShowHelpPanel(false);
+                        } else {
+                          setHelpMode('example');
+                          setShowHelpPanel(true);
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                        showHelpPanel && helpMode === 'example' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                      }`}
+                    >
+                      <Code2 className="mr-2 h-4 w-4" />
+                      Examples
+                    </Button>
+                  </div>
                   <RunButton
                     onClick={handleRunTests}
                     loading={isRunning}
                     disabled={!studentCode || isRunning}
                   />
                 </div>
+
+                {/* Test Results */}
+                {runnerResult && (
+                  <div className="mt-6">
+                    <TestResults
+                      results={runnerResult}
+                      onRequestFeedback={handleGetFeedback}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - TODO Checklist */}
+              <div className="lg:col-span-1">
+                {scaffold && (
+                  <TodoChecklist
+                    todos={scaffold.task_todos?.[`task_${currentTask}`] || scaffold.todos || []}
+                    currentTodoIndex={currentTodoIndex}
+                    onTodoIndexChange={(index) => {
+                      setCurrentTodoIndex(index);
+                    }}
+                    onTodoToggle={(index) => {
+                      setCompletedTodos(prev => {
+                        const newSet = new Set(prev);
+                        if (newSet.has(index)) {
+                          newSet.delete(index);
+                        } else {
+                          newSet.add(index);
+                        }
+                        return newSet;
+                      });
+                    }}
+                    completedTodos={completedTodos}
+                  />
+                )}
               </div>
             </div>
-
-            {/* Test Results */}
-            {runnerResult && (
-              <div className="mt-8">
-                <TestResults
-                  results={runnerResult}
-                  onRequestFeedback={handleGetFeedback}
-                />
-              </div>
-            )}
 
             {/* Feedback Card */}
             {showFeedback && feedback && (
@@ -267,16 +344,28 @@ export function EditorPage() {
           </div>
         </div>
 
-        {/* ChatBot Sidebar */}
-        {showChatBot && (
+        {/* Help Panel Sidebar */}
+        {showHelpPanel && (
           <div className="w-[400px] h-full bg-white dark:bg-black border-l border-gray-200/60 dark:border-gray-800/60 flex-shrink-0">
-            <ChatBot
-              code={studentCode}
-              language={language}
-              currentTask={currentTask}
-              scaffold={scaffold}
-              onClose={() => setShowChatBot(false)}
-            />
+            {helpMode === 'hint' ? (
+              <GetHint
+                code={studentCode}
+                language={language}
+                currentTask={currentTask}
+                scaffold={scaffold}
+                currentTodoIndex={currentTodoIndex}
+                knownLanguage={proficientLanguage}
+                onClose={() => setShowHelpPanel(false)}
+              />
+            ) : (
+              <GetConceptExample
+                language={language}
+                currentTask={currentTask}
+                scaffold={scaffold}
+                knownLanguage={proficientLanguage}
+                onClose={() => setShowHelpPanel(false)}
+              />
+            )}
           </div>
         )}
       </div>
