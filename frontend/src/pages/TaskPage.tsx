@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { AssignmentInput } from '../components/AssignmentInput';
 import { ProcessingProgress } from '../components/ProcessingProgress';
@@ -102,15 +102,17 @@ export function TaskPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-background">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
-      <header className="border-b border-black/5 dark:border-border">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+      <header className="border-b border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <h1 className="text-xl font-semibold tracking-tight text-black dark:text-foreground">Scaffy</h1>
-            <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center">
+              <span className="text-[15px] font-semibold text-black dark:text-white">Scaffy</span>
+            </Link>
+            <div className="flex items-center gap-8">
               <DarkModeToggle />
-              <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-sm">
                 Home
               </Button>
             </div>
@@ -118,7 +120,7 @@ export function TaskPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[95%] px-6 py-8 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-[1440px] px-6 py-8 lg:px-8">
         {/* Error Display */}
         {error && (
           <div className="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4">
@@ -151,7 +153,7 @@ export function TaskPage() {
         {hasSubmitted && scaffold && parserOutput && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-foreground">
+              <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">
                 Task Breakdown
               </h2>
               <div className="flex gap-3">
@@ -161,13 +163,13 @@ export function TaskPage() {
                     setHasSubmitted(false);
                     setError(null);
                   }}
-                  className="border-black/10 dark:border-border"
+                  className="border-gray-200 dark:border-gray-800"
                 >
                   New Assignment
                 </Button>
                 <Button
                   onClick={handleContinueToEditor}
-                  className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                  className="bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 shadow-md shadow-blue-500/20"
                 >
                   Continue to Editor
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -180,7 +182,8 @@ export function TaskPage() {
               {scaffold.todo_list.map((todo, taskIndex) => {
                 const taskId = `task_${taskIndex}`;
                 const task = parserOutput.tasks?.[taskIndex] || null;
-                const taskExample = task?.concepts?.join(', ') || null;
+                const taskConcepts = task?.concepts || [];
+                const taskConceptExamples = scaffold.task_concept_examples?.[`task_${taskIndex}`] || {};
                 
                 // Get starter code structure for this specific task
                 const getTaskCodeStructure = () => {
@@ -254,64 +257,87 @@ export function TaskPage() {
                 return (
                   <div
                     key={taskIndex}
-                    className="rounded-lg border-2 border-black/10 dark:border-border bg-white dark:bg-card p-8 vercel-shadow"
+                    className="rounded-2xl border border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black p-8 shadow-sm"
                   >
                     <div className="mb-6 flex items-start gap-4">
-                      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-black dark:bg-primary text-sm font-semibold text-white">
+                      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500 text-sm font-semibold text-white">
                         {taskIndex + 1}
                       </span>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold tracking-tight text-black dark:text-foreground mb-2">
+                        <h3 className="text-lg font-semibold tracking-tight text-black dark:text-white mb-2">
                           {task?.title || `Task ${taskIndex + 1}`}
                         </h3>
-                        <p className="text-sm text-gray-700 dark:text-muted-foreground leading-relaxed">{task?.description || todo}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{task?.description || todo}</p>
                         {task?.estimated_time && (
-                          <p className="text-xs text-gray-500 dark:text-muted-foreground/70 mt-1">Estimated time: {task.estimated_time}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Estimated time: {task.estimated_time}</p>
                         )}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                       {/* Example Section */}
-                      <div className="rounded-md border border-black/5 dark:border-border bg-gray-50 dark:bg-muted p-6">
+                      <div className="rounded-xl border border-gray-200/60 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-900/50 p-6">
                         <div className="mb-3 flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-black dark:text-foreground">Example</h4>
-                          <span className="text-xs text-gray-500 dark:text-muted-foreground/70">({proficientLanguage})</span>
+                          <h4 className="text-sm font-semibold text-black dark:text-white">Example</h4>
+                          <span className="text-xs text-gray-500 dark:text-gray-500">({proficientLanguage})</span>
                         </div>
-                        {taskExample ? (
-                          <div className="space-y-2">
-                            <pre className="text-xs text-gray-700 dark:text-muted-foreground whitespace-pre-wrap leading-relaxed font-mono">
-                              {typeof taskExample === 'string' 
-                                ? taskExample 
-                                : JSON.stringify(taskExample, null, 2)}
-                            </pre>
+                        {Object.keys(taskConceptExamples).length > 0 ? (
+                          <div className="space-y-4">
+                            {Object.entries(taskConceptExamples).map(([concept, example], idx) => (
+                              <div key={idx} className="space-y-2">
+                                <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                  {concept}
+                                </div>
+                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 overflow-x-auto">
+                                  {example}
+                                </pre>
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Code2 className="h-10 w-10 text-gray-400 dark:text-muted-foreground/50 mb-2" />
-                            <p className="text-sm text-gray-600 dark:text-muted-foreground">
-                              Example in <strong>{proficientLanguage}</strong> will appear here
+                            <Code2 className="h-10 w-10 text-gray-400 dark:text-gray-600 mb-2" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              No examples needed for this task
                             </p>
+                          </div>
+                        )}
+                        {/* Concepts used section */}
+                        {taskConcepts.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                            <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                              Concepts used:
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {taskConcepts.map((concept, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                                >
+                                  {concept}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
 
                       {/* Code Structure/Template Section */}
-                      <div className="rounded-md border border-black/5 dark:border-border bg-gray-50 dark:bg-muted p-6">
-                        <h4 className="mb-3 text-sm font-semibold text-black dark:text-foreground">Code Structure</h4>
+                      <div className="rounded-xl border border-gray-200/60 dark:border-gray-800/60 bg-gray-50/50 dark:bg-gray-900/50 p-6">
+                        <h4 className="mb-3 text-sm font-semibold text-black dark:text-white">Code Structure</h4>
                         {codeStructure ? (
                           <div className="space-y-2">
-                            <pre className="text-xs text-gray-800 dark:text-muted-foreground whitespace-pre-wrap leading-relaxed font-mono bg-white dark:bg-background p-4 rounded border border-black/10 dark:border-border overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <pre className="text-xs text-gray-800 dark:text-gray-300 whitespace-pre-wrap leading-relaxed font-mono bg-white dark:bg-black p-4 rounded-lg border border-gray-200 dark:border-gray-800 overflow-x-auto max-h-[400px] overflow-y-auto">
                               {codeStructure}
                             </pre>
-                            <p className="text-xs text-gray-500 dark:text-muted-foreground/70 mt-2 italic">
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 italic">
                               Fill in the TODO sections and complete the structure above
                             </p>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Code2 className="h-10 w-10 text-gray-400 dark:text-muted-foreground/50 mb-2" />
-                            <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                            <Code2 className="h-10 w-10 text-gray-400 dark:text-gray-600 mb-2" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                               Code structure template will appear here
                             </p>
                           </div>

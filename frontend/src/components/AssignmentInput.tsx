@@ -19,14 +19,14 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
 
   return (
     <div className="w-full max-w-2xl">
-      <div className="rounded-lg border border-black/5 dark:border-border bg-white dark:bg-card p-8 vercel-shadow">
+      <div className="rounded-2xl border border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black p-8 shadow-sm">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold tracking-tight text-black dark:text-foreground">Create Assignment</h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">Enter your assignment details to get started</p>
+          <h2 className="text-xl font-semibold tracking-tight text-black dark:text-white">Create Assignment</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Enter your assignment details to get started</p>
         </div>
         <div className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="assignment-text" className="text-sm font-medium text-black dark:text-foreground">
+            <label htmlFor="assignment-text" className="text-sm font-medium text-black dark:text-white">
               Assignment Description
             </label>
             <Textarea
@@ -36,12 +36,12 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
               onChange={(e) => setAssignmentText(e.target.value)}
               rows={8}
               disabled={loading}
-              className="resize-none border-black/10 dark:border-border focus:border-black/20 dark:focus:border-border focus:ring-0"
+              className="resize-none border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-0"
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="language" className="text-sm font-medium text-black dark:text-foreground">
+              <label htmlFor="language" className="text-sm font-medium text-black dark:text-white">
                 Language to Learn
               </label>
               <Select
@@ -49,7 +49,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 disabled={loading}
-                className="border-black/10 dark:border-border focus:border-black/20 dark:focus:border-border"
+                className="border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500"
               >
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
@@ -57,7 +57,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
               </Select>
             </div>
             <div className="space-y-2">
-              <label htmlFor="proficient-language" className="text-sm font-medium text-black dark:text-foreground">
+              <label htmlFor="proficient-language" className="text-sm font-medium text-black dark:text-white">
                 Language You Know
               </label>
               <Select
@@ -65,7 +65,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
                 value={proficientLanguage}
                 onChange={(e) => setProficientLanguage(e.target.value)}
                 disabled={loading}
-                className="border-black/10 dark:border-border focus:border-black/20 dark:focus:border-border"
+                className="border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500"
               >
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
@@ -79,7 +79,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
           <Button
             onClick={handleSubmit}
             disabled={!assignmentText.trim() || loading}
-            className="w-full bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 transition-all duration-150 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:hover:bg-gray-400 dark:disabled:hover:bg-gray-600"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 shadow-md shadow-blue-500/20 transition-all duration-150 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:hover:bg-gray-400 dark:disabled:hover:bg-gray-600"
           >
             {loading ? (
               <>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { CodeEditor } from '../components/CodeEditor';
 import { RunButton } from '../components/RunButton';
@@ -163,19 +163,23 @@ export function EditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-background">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
-      <header className="border-b border-black/5 dark:border-border">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+      <header className="border-b border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black">
+        <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/task')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/task')} className="text-sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Tasks
               </Button>
-              <h1 className="text-xl font-semibold tracking-tight text-black dark:text-foreground">Scaffy</h1>
+              <Link to="/" className="flex items-center">
+                <span className="text-[15px] font-semibold text-black dark:text-white">Scaffy</span>
+              </Link>
             </div>
-            <DarkModeToggle />
+            <div className="flex items-center gap-8">
+              <DarkModeToggle />
+            </div>
           </div>
         </div>
       </header>
@@ -183,7 +187,7 @@ export function EditorPage() {
       <div className="flex h-[calc(100vh-80px)] overflow-hidden">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-          <div className="flex-1 overflow-y-auto px-6 py-8 sm:px-8 lg:px-12">
+          <div className="flex-1 overflow-y-auto mx-auto max-w-[1440px] w-full px-6 py-8 lg:px-8">
             {/* Error Display */}
             {error && (
               <div className="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4">
@@ -214,7 +218,7 @@ export function EditorPage() {
                   <Button
                     onClick={() => setShowChatBot(!showChatBot)}
                     variant="outline"
-                    className="border-black/10 dark:border-border hover:bg-black/5 dark:hover:bg-muted"
+                    className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     {showChatBot ? 'Close Help' : 'Get Help'}
@@ -265,7 +269,7 @@ export function EditorPage() {
 
         {/* ChatBot Sidebar */}
         {showChatBot && (
-          <div className="w-[400px] h-full bg-white dark:bg-background border-l border-black/10 dark:border-border flex-shrink-0">
+          <div className="w-[400px] h-full bg-white dark:bg-black border-l border-gray-200/60 dark:border-gray-800/60 flex-shrink-0">
             <ChatBot
               code={studentCode}
               language={language}

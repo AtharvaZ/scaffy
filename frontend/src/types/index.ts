@@ -42,6 +42,7 @@ export interface ScaffoldPackage {
   instructions?: string;
   concept_examples?: Record<string, string>;
   task_concepts?: Record<string, string[]>; // Task concepts indexed by task ID
+  task_concept_examples?: Record<string, Record<string, string>>; // Concept examples per task
 }
 
 // Hint Schema (from backend)

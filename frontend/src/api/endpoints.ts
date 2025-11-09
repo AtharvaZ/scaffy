@@ -148,6 +148,13 @@ export async function parseAndScaffold(
       acc[`task_${index}`] = task.concepts;
       return acc;
     }, {} as Record<string, string[]>),
+    // Store concept examples per task
+    task_concept_examples: starterCodes.reduce((acc, code, index) => {
+      if (code.concept_examples) {
+        acc[`task_${index}`] = code.concept_examples;
+      }
+      return acc;
+    }, {} as Record<string, Record<string, string>>),
   };
   
   return {
