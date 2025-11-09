@@ -93,6 +93,8 @@ export interface TodoListProps {
   currentTask: number;
   onTaskSelect: (index: number) => void;
   completedTasks?: Set<number>;
+  selectedTaskForExamples?: number;
+  onTaskSelectForExamples?: (index: number) => void;
 }
 
 export interface CodeEditorProps {

@@ -11,6 +11,7 @@ interface AppStore extends AppState {
   setScaffold: (scaffold: ScaffoldPackage | null) => void;
   setCurrentTask: (task: number) => void;
   addCompletedTask: (task: number) => void;
+  toggleCompletedTask: (task: number) => void;
   setStudentCode: (code: string) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   setRunnerResult: (result: RunnerResult | null) => void;
@@ -76,6 +77,16 @@ export const useAppStore = create<AppStore>()(
           newCompleted.add(task);
           return { completedTasks: newCompleted };
         }),
+      toggleCompletedTask: (task) =>
+        set((state) => {
+          const newCompleted = new Set(state.completedTasks);
+          if (newCompleted.has(task)) {
+            newCompleted.delete(task);
+          } else {
+            newCompleted.add(task);
+          }
+          return { completedTasks: newCompleted };
+        }),
       setCompletedTasks: (tasks) => set({ completedTasks: tasks }),
       setStudentCode: (code) => set({ studentCode: code, hasUnsavedChanges: true }),
       setHasUnsavedChanges: (hasChanges) => set({ hasUnsavedChanges: hasChanges }),
@@ -111,7 +122,7 @@ export const useAppStore = create<AppStore>()(
         assignmentId: state.assignmentId,
         language: state.language,
         proficientLanguage: state.proficientLanguage,
-        completedTasks: Array.from(state.completedTasks),
+        // Removed completedTasks from persistence - tasks won't be saved between sessions
         isDarkMode: state.isDarkMode,
       }),
       onRehydrateStorage: () => (state) => {

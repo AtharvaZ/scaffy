@@ -1,9 +1,23 @@
-import apiCall from './client';
-import type { TaskBreakdownSchema, StarterCode, HintSchema, ParserOutput, ScaffoldPackage, RunnerResult, FeedbackResponse } from '../types';
+import apiCall from "./client";
+import type {
+  TaskBreakdownSchema,
+  StarterCode,
+  HintSchema,
+  ParserOutput,
+  ScaffoldPackage,
+  RunnerResult,
+} from "../types";
 
 // Health check
-export async function checkHealth(): Promise<{ status: string; agents?: any; api_key_set?: boolean }> {
-  return apiCall<{ status: string; agents?: any; api_key_set?: boolean }>('/health', { method: 'GET' });
+export async function checkHealth(): Promise<{
+  status: string;
+  agents?: any;
+  api_key_set?: boolean;
+}> {
+  return apiCall<{ status: string; agents?: any; api_key_set?: boolean }>(
+    "/health",
+    { method: "GET" }
+  );
 }
 
 // Parse assignment - matches backend /parse-assignment endpoint
@@ -11,10 +25,10 @@ export async function parseAssignment(
   assignmentText: string,
   targetLanguage: string,
   knownLanguage?: string,
-  experienceLevel: string = 'intermediate'
-): Promise<TaskBreakdownSchema> {
-  return apiCall<TaskBreakdownSchema>('/parse-assignment', {
-    method: 'POST',
+  experienceLevel: string = "intermediate"
+): Promise<ParserOutput> {
+  return apiCall<ParserOutput>("/parse-assignment", {
+    method: "POST",
     body: JSON.stringify({
       assignment_text: assignmentText,
       target_language: targetLanguage,
@@ -25,20 +39,21 @@ export async function parseAssignment(
 }
 
 // Generate starter code - matches backend /generate-starter-code endpoint
-export async function generateStarterCode(
-  taskDescription: string,
-  programmingLanguage: string,
-  concepts: string[],
-  knownLanguage?: string
-): Promise<StarterCode> {
-  return apiCall<StarterCode>('/generate-starter-code', {
-    method: 'POST',
-    body: JSON.stringify({
-      task_description: taskDescription,
-      programming_language: programmingLanguage,
-      concepts: concepts,
-      known_language: knownLanguage || null,
-    }),
+export async function generateStarterCodeBatch(
+  tasks: Array<{
+    task_description: string;
+    programming_language: string;
+    concepts: string[];
+    known_language?: string;
+  }>
+): Promise<{
+  tasks: StarterCode[];
+  total_tasks: number;
+  generation_time: string;
+}> {
+  return apiCall("/generate-starter-code-batch", {
+    method: "POST",
+    body: JSON.stringify({ tasks }),
   });
 }
 
@@ -55,18 +70,20 @@ export async function getHint(
 ): Promise<HintSchema> {
   // Ensure all values are serializable
   const payload = {
-    task_description: String(taskDescription || ''),
-    concepts: Array.isArray(concepts) ? concepts.map(c => String(c)) : [],
-    student_code: String(studentCode || ''),
-    question: String(question || ''),
-    previous_hints: Array.isArray(previousHints) ? previousHints.map(h => String(h)) : [],
+    task_description: String(taskDescription || ""),
+    concepts: Array.isArray(concepts) ? concepts.map((c) => String(c)) : [],
+    student_code: String(studentCode || ""),
+    question: String(question || ""),
+    previous_hints: Array.isArray(previousHints)
+      ? previousHints.map((h) => String(h))
+      : [],
     help_count: Number(helpCount) || 1,
     known_language: knownLanguage ? String(knownLanguage) : null,
     target_language: targetLanguage ? String(targetLanguage) : null,
   };
-  
-  return apiCall<HintSchema>('/get-hint', {
-    method: 'POST',
+
+  return apiCall<HintSchema>("/get-hint", {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }
@@ -76,32 +93,15 @@ export async function runCode(
   code: string,
   language: string,
   stdin?: string
-): Promise<{
-  success: boolean;
-  output: string;
-  error: string;
-  exit_code: number;
-  execution_time: string;
-}> {
-  return apiCall('/run-code', {
-    method: 'POST',
+): Promise<RunnerResult> {
+  return apiCall<RunnerResult>("/run-code", {
+    method: "POST",
     body: JSON.stringify({
-      code: code,
-      language: language,
+      code,
+      language,
       stdin: stdin || null,
     }),
   });
-}
-
-export async function getFeedback(
-  studentCode: string,
-  runnerResult: RunnerResult,
-  scaffold: ScaffoldPackage,
-  studentId: string,
-  assignmentId: string,
-  taskId: string
-): Promise<FeedbackResponse> {
-  throw new Error('getFeedback endpoint not available in backend. This feature is not implemented.');
 }
 
 // Helper function to parse assignment and generate starter code for all tasks
@@ -109,73 +109,120 @@ export async function parseAndScaffold(
   assignmentText: string,
   targetLanguage: string,
   knownLanguage?: string,
-  experienceLevel: string = 'intermediate',
-  onProgress?: (stage: 'parsing' | 'generating', completed: number, total: number) => void
-): Promise<{ parser_output: TaskBreakdownSchema; scaffold_package: ScaffoldPackage }> {
+  experienceLevel: string = "intermediate",
+  onProgress?: (
+    stage: "parsing" | "generating",
+    completed: number,
+    total: number
+  ) => void
+): Promise<{
+  parser_output: TaskBreakdownSchema;
+  scaffold_package: ScaffoldPackage;
+}> {
   // First, parse the assignment
-  if (onProgress) onProgress('parsing', 0, 1);
-  const taskBreakdown = await parseAssignment(assignmentText, targetLanguage, knownLanguage, experienceLevel);
-  
-  // Then, generate starter code for each task with progress tracking
-  const starterCodes: StarterCode[] = [];
-  const totalTasks = taskBreakdown.tasks.length;
-  
-  for (let i = 0; i < taskBreakdown.tasks.length; i++) {
-    const task = taskBreakdown.tasks[i];
-    if (onProgress) onProgress('generating', i, totalTasks);
-    
-    const code = await generateStarterCode(
-      task.description,
-      targetLanguage,
-      task.concepts,
-      knownLanguage
-    );
-    starterCodes.push(code);
-  }
-  
-  // Final progress update
-  if (onProgress) onProgress('generating', totalTasks, totalTasks);
-  
-  // Combine into scaffold package format
-  const scaffoldPackage: ScaffoldPackage = {
-    todo_list: taskBreakdown.tasks.map(task => task.description),
-    starter_files: starterCodes.reduce((acc, code, index) => {
-      acc[`task_${index + 1}.${targetLanguage === 'python' ? 'py' : 'js'}`] = code.code_snippet;
-      return acc;
-    }, {} as Record<string, string>),
-    unit_tests: {}, // Not available from backend
-    per_task_hints: {}, // Not available from backend
-    code_snippet: starterCodes[0]?.code_snippet,
-    instructions: starterCodes[0]?.instructions,
-    todos: starterCodes[0]?.todos, // TODOs for first task
-    concept_examples: starterCodes[0]?.concept_examples,
-    // Store task concepts for easy access
-    task_concepts: taskBreakdown.tasks.reduce((acc, task, index) => {
-      acc[`task_${index}`] = task.concepts;
-      return acc;
-    }, {} as Record<string, string[]>),
-    // Store concept examples per task
-    task_concept_examples: starterCodes.reduce((acc, code, index) => {
-      if (code.concept_examples) {
-        acc[`task_${index}`] = code.concept_examples;
-      }
-      return acc;
-    }, {} as Record<string, Record<string, string>>),
-    // Store TODOs per task
-    task_todos: starterCodes.reduce((acc, code, index) => {
-      if (code.todos) {
-        acc[`task_${index}`] = code.todos;
-      }
-      return acc;
-    }, {} as Record<string, string[]>),
-  };
-  
-  return {
-    parser_output: taskBreakdown,
-    scaffold_package: scaffoldPackage,
-  };
-}
+  if (onProgress) onProgress("parsing", 0, 1);
+  const taskBreakdown = await parseAssignment(
+    assignmentText,
+    targetLanguage,
+    knownLanguage,
+    experienceLevel
+  );
 
+  // Build batch request
+  const batchRequest = taskBreakdown.tasks.map((task) => ({
+    task_description: task.description,
+    programming_language: targetLanguage,
+    concepts: task.concepts,
+    known_language: knownLanguage || undefined,
+  }));
+
+  // Simulate smooth progress during batch generation
+  const totalTasks = taskBreakdown.tasks.length;
+  let currentProgress = 0;
+
+  if (onProgress) onProgress("generating", 0, totalTasks);
+
+  const progressInterval = setInterval(() => {
+    if (currentProgress < totalTasks - 1) {
+      currentProgress++;
+      if (onProgress) onProgress("generating", currentProgress, totalTasks);
+    }
+  }, 2500); // Update every 2.5 seconds for smooth feel
+
+  try {
+    // Single API call for all tasks
+    const batchResponse = await generateStarterCodeBatch(batchRequest);
+    const starterCodes = batchResponse.tasks;
+
+    // Clear interval and show complete
+    clearInterval(progressInterval);
+    if (onProgress) onProgress("generating", totalTasks, totalTasks);
+
+    // Verify we have the same number of tasks
+    if (starterCodes.length !== taskBreakdown.tasks.length) {
+      console.error(
+        `Mismatch: Expected ${taskBreakdown.tasks.length} starter codes, got ${starterCodes.length}`
+      );
+    }
+
+    // Debug: Log the todos for each task
+    console.log("Task todos mapping:");
+    starterCodes.forEach((code, index) => {
+      console.log(`task_${index}:`, code.todos);
+    });
+
+    // Combine all task code snippets into one file
+    const combinedCode = starterCodes
+      .map((code, index) => {
+        const taskNumber = index + 1;
+        return `# ===== TASK ${taskNumber}: ${taskBreakdown.tasks[index].title} =====\n${code.code_snippet}`;
+      })
+      .join("\n\n");
+
+    // Flatten all todos from all tasks into one array
+    const allTodos = starterCodes.flatMap((code) => code.todos || []);
+
+    // Rest of your scaffold package construction
+    const scaffoldPackage: ScaffoldPackage = {
+      todo_list: taskBreakdown.tasks.map((task) => task.description),
+      starter_files: starterCodes.reduce((acc, code, index) => {
+        acc[`task_${index + 1}.${targetLanguage === "python" ? "py" : "js"}`] =
+          code.code_snippet;
+        return acc;
+      }, {} as Record<string, string>),
+      unit_tests: {},
+      per_task_hints: {},
+      code_snippet: combinedCode, // Combined code for editor
+      instructions: starterCodes[0]?.instructions,
+      todos: allTodos, // All todos flattened
+      concept_examples: starterCodes[0]?.concept_examples,
+      task_concepts: taskBreakdown.tasks.reduce((acc, task, index) => {
+        acc[`task_${index}`] = task.concepts;
+        return acc;
+      }, {} as Record<string, string[]>),
+      task_concept_examples: starterCodes.reduce((acc, code, index) => {
+        // Always set concept_examples, even if undefined
+        acc[`task_${index}`] = code.concept_examples || {};
+        return acc;
+      }, {} as Record<string, Record<string, string>>),
+      task_todos: starterCodes.reduce((acc, code, index) => {
+        // Ensure we always set todos, even if empty array
+        acc[`task_${index}`] = code.todos || [];
+        return acc;
+      }, {} as Record<string, string[]>),
+    };
+
+    console.log("Final task_todos:", scaffoldPackage.task_todos);
+
+    return {
+      parser_output: taskBreakdown,
+      scaffold_package: scaffoldPackage,
+    };
+  } catch (error) {
+    clearInterval(progressInterval);
+    throw error;
+  }
+}
 // Extract text from PDF - matches backend /extract-pdf-text endpoint
 export async function extractPdfText(file: File): Promise<{
   success: boolean;
@@ -183,28 +230,31 @@ export async function extractPdfText(file: File): Promise<{
   page_count: number;
   error: string | null;
 }> {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
   const url = `${API_BASE_URL}/extract-pdf-text`;
-  
+
   const formData = new FormData();
-  formData.append('file', file);
-  
+  formData.append("file", file);
+
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary for FormData
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new Error(`Network error: Cannot connect to ${url}. Check if backend is running and CORS is configured.`);
+      throw new Error(
+        `Network error: Cannot connect to ${url}. Check if backend is running and CORS is configured.`
+      );
     }
     throw error;
   }
@@ -218,13 +268,13 @@ export async function getConceptExample(
   context?: string
 ): Promise<{
   concept: string;
-  example_type: 'basic_syntax' | 'intermediate_pattern' | 'advanced_pattern';
+  example_type: "basic_syntax" | "intermediate_pattern" | "advanced_pattern";
   code_example: string;
   explanation: string;
   comparison_to_known: string | null;
 }> {
-  return apiCall('/get-concept-example', {
-    method: 'POST',
+  return apiCall("/get-concept-example", {
+    method: "POST",
     body: JSON.stringify({
       concept: concept,
       programming_language: programmingLanguage,
@@ -247,10 +297,11 @@ export async function chatWithAI(
 ): Promise<{ response: string }> {
   // Extract task description and concepts from scaffold if available
   const taskIndex = parseInt(taskId) || 0;
-  const taskDescription = scaffold?.todo_list?.[taskIndex] || 'Current task';
+  const taskDescription = scaffold?.todo_list?.[taskIndex] || "Current task";
   // Extract concepts from the scaffold if available
-  const concepts: string[] = scaffold?.task_concepts?.[`task_${taskIndex}`] || [];
-  
+  const concepts: string[] =
+    scaffold?.task_concepts?.[`task_${taskIndex}`] || [];
+
   // Get hint using the backend endpoint
   const hintResult = await getHint(
     taskDescription,
@@ -262,9 +313,12 @@ export async function chatWithAI(
     knownLanguage,
     language // target_language
   );
-  
+
   return {
-    response: hintResult.hint + (hintResult.example_code ? `\n\nExample:\n${hintResult.example_code}` : ''),
+    response:
+      hintResult.hint +
+      (hintResult.example_code
+        ? `\n\nExample:\n${hintResult.example_code}`
+        : ""),
   };
 }
-

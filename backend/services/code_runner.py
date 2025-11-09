@@ -99,8 +99,13 @@ class CodeRunner:
             run_result = result.get("run", {})
             stdout = run_result.get("stdout", "")[:self.max_output_length]
             stderr = run_result.get("stderr", "")[:self.max_output_length]
-            exit_code = run_result.get("code", 0)
-            
+            exit_code = run_result.get("code")
+
+            # Ensure exit_code is always an integer
+            if exit_code is None:
+                exit_code = 1 if stderr else 0
+            exit_code = int(exit_code)
+
             # Check if execution was successful
             success = exit_code == 0 and not stderr
             

@@ -11,9 +11,10 @@ interface GetConceptExampleProps {
   scaffold?: ScaffoldPackage;
   knownLanguage?: string;
   onClose: () => void;
+  selectedTaskForExamples?: number;
 }
 
-export function GetConceptExample({ language, currentTask, scaffold, knownLanguage, onClose }: GetConceptExampleProps) {
+export function GetConceptExample({ language, currentTask, scaffold, knownLanguage, onClose, selectedTaskForExamples }: GetConceptExampleProps) {
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [example, setExample] = useState<{
     concept: string;
@@ -24,9 +25,12 @@ export function GetConceptExample({ language, currentTask, scaffold, knownLangua
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get concepts for current task
-  const concepts = scaffold?.task_concepts?.[`task_${currentTask}`] || [];
-  const taskDescription = scaffold?.todo_list?.[currentTask] || 'Current task';
+  // Use selected task for examples if provided, otherwise use current task
+  const taskIndex = selectedTaskForExamples !== undefined ? selectedTaskForExamples : currentTask;
+
+  // Get concepts for the selected task
+  const concepts = scaffold?.task_concepts?.[`task_${taskIndex}`] || [];
+  const taskDescription = scaffold?.todo_list?.[taskIndex] || 'Current task';
 
   const handleGetExample = async (concept: string) => {
     setSelectedConcept(concept);
@@ -59,9 +63,16 @@ export function GetConceptExample({ language, currentTask, scaffold, knownLangua
     <div className="h-full w-full bg-white dark:bg-background border-l border-black/10 dark:border-border flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/5 dark:border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Code2 className="h-4 w-4 text-black dark:text-foreground" />
-          <h3 className="text-sm font-semibold tracking-tight text-black dark:text-foreground">Concept Examples</h3>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Code2 className="h-4 w-4 text-black dark:text-foreground" />
+            <h3 className="text-sm font-semibold tracking-tight text-black dark:text-foreground">Concept Examples</h3>
+          </div>
+          {selectedTaskForExamples !== undefined && selectedTaskForExamples !== currentTask && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+              Task {taskIndex + 1}
+            </p>
+          )}
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
           <X className="h-4 w-4" />

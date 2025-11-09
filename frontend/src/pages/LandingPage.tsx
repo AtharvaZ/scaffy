@@ -51,8 +51,8 @@ export function LandingPage() {
               Intelligent hints help you learn.
             </p>
             
-            <div className="mt-10 flex items-center justify-center gap-3">
-              <Link to="/task">
+            <div className="mt-10 flex items-center justify-center gap-3 w-full">
+              <Link to="/task" className="flex justify-center">
                 <Button className="h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 text-[15px] px-6 font-medium shadow-lg shadow-blue-500/30">
                   Start Building
                 </Button>
@@ -260,12 +260,12 @@ export function LandingPage() {
       {/* CTA */}
       <section className="py-32 bg-white dark:bg-black">
         <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-center w-full flex flex-col items-center">
             <h2 className="text-[56px] leading-[1.1] font-bold tracking-[-0.02em] mb-6">
               <span className="text-black dark:text-white">Start building </span>
-              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">today.</span>
+              <span className="text-black dark:text-white">today.</span>
             </h2>
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3 w-full">
               <Link to="/task">
                 <Button className="h-12 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500 text-[15px] px-6 font-medium shadow-lg shadow-blue-500/30">
                   Get Started

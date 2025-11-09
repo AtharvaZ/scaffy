@@ -8,6 +8,8 @@ from .schemas import (
     HintSchema,
     ConceptExampleRequest,
     ConceptExampleResponse,
+    BatchBoilerPlateCodeSchema,
+    BatchStarterCodeResponse
 )
 
 __all__ = [
@@ -18,4 +20,8 @@ __all__ = [
     "StarterCode",
     "HintResponseSchema",
     "HintSchema",
+    "ConceptExampleRequest",
+    "ConceptExampleResponse",
+    "BatchBoilerPlateCodeSchema",
+    "BatchStarterCodeResponse"
 ]

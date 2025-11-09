@@ -20,7 +20,9 @@ from pyd_models.schemas import (
     CodeExecutionResult,
     PDFExtractionResult,
     ConceptExampleRequest,
-    ConceptExampleResponse
+    ConceptExampleResponse,
+    BatchBoilerPlateCodeSchema,
+    BatchStarterCodeResponse
 )
 
 # Import agents and services
@@ -112,8 +114,8 @@ async def parse_assignment(assignment: AssignmentSchema):
 # AGENT 2: STARTER CODE GENERATOR
 # ============================================
 
-@app.post("/generate-starter-code", response_model=StarterCode)
-async def generate_starter_code(request: BoilerPlateCodeSchema):
+@app.post("/generate-starter-code-batch", response_model=BatchStarterCodeResponse)
+async def generate_starter_code_bacth(request: BatchBoilerPlateCodeSchema):
     """
     Generate starter code template with TODOs for a specific task
     
@@ -121,24 +123,48 @@ async def generate_starter_code(request: BoilerPlateCodeSchema):
     based on the student's known language.
     """
     try:
-        # Call Agent 2 to generate starter code
-        result = codegen_agent.generate_boilerplate_code(request)
-        return result
+        import time
+        start_time = time.time()
+        
+        logger.info("=" * 80)
+        logger.info("BATCH CODE GENERATION REQUEST")
+        logger.info(f"Number of tasks: {len(request.tasks)}")
+        logger.info("=" * 80)
+        
+        # Call Agent 2's batch method
+        results = codegen_agent.generate_all_boilerplate_batch(request.tasks)
+
+        elapsed_time = time.time() - start_time
+        logger.info(f"Batch generation completed in {elapsed_time:.2f} seconds")
+
+        # Log what we're returning to frontend
+        logger.info("=" * 80)
+        logger.info("RETURNING TO FRONTEND:")
+        for idx, result in enumerate(results):
+            logger.info(f"Task {idx} - Todos count: {len(result.todos)}")
+            logger.info(f"Task {idx} - Todos: {result.todos}")
+        logger.info("=" * 80)
+
+        return BatchStarterCodeResponse(
+            tasks=results,
+            total_tasks=len(results),
+            generation_time=f"{elapsed_time:.2f}s"
+        )
     
     except Exception as e:
         error_str = str(e).lower()
-        logger.error(f"Failed to generate starter code: {e}", exc_info=True)
+        logger.error(f"Failed to generate starter code batch: {e}", exc_info=True)
         
         # Provide user-friendly error messages for API errors
         if "rate limit" in error_str or "overloaded" in error_str or "529" in error_str or "temporarily unavailable" in error_str:
             raise HTTPException(
-                status_code=503,  # Service Unavailable
-                detail="The AI service is temporarily overloaded. Please try again in a few moments. If the issue persists, wait a bit longer and try again."
+                status_code=503,
+                detail="The AI service is temporarily overloaded. Please try again in a few moments."
             )
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to generate starter code: {str(e)}"
+                detail=f"Failed to generate starter code batch: {str(e)}"
             )
 
 
@@ -258,35 +284,6 @@ async def extract_pdf_text(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to extract text from PDF: {str(e)}"
-        )
-
-
-# ============================================
-# ON-DEMAND CONCEPT EXAMPLES
-# ============================================
-
-@app.post("/get-concept-example", response_model=ConceptExampleResponse)
-async def get_concept_example(request: ConceptExampleRequest):
-    """
-    Generate on-demand concept examples for students
-    
-    Provides examples of programming concepts in the student's known language
-    to help them understand and apply concepts to the target language.
-    """
-    try:
-        logger.info(f"Generating on-demand example for concept: {request.concept} in {request.programming_language}")
-        
-        # Call the concept example agent
-        result = concept_example_agent.generate_example(request)
-        
-        logger.info(f"Successfully generated {result.example_type} example for {request.concept}")
-        return result
-    
-    except Exception as e:
-        logger.error(f"Failed to generate concept example: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate concept example: {str(e)}"
         )
 
 

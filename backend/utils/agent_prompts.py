@@ -8,7 +8,6 @@ def get_parser_prompt(assignment_text: str, target_language: str,
     """
     Agent 1: Assignment Parser (UPDATED)
     Parse assignment and break into ordered tasks with dependencies
-    Now includes better concept identification for Agent 2's intelligent examples
     """
     known_lang_context = f"\nKnown Language: {known_language}" if known_language else "\nNo prior programming experience"
     
@@ -32,7 +31,7 @@ IMPORTANT RULES:
 - Focus on breaking down WHAT needs to be done, not HOW to do it completely
 - Ensure dependencies are realistic (task 3 cannot depend on task 5)
 - Order tasks in a logical learning progression
-- Each task should be completable in one sitting (20-60 minutes typically)
+- Each task should be completable in one sitting (20-40 minutes typically)
 
 CONCEPT IDENTIFICATION GUIDELINES:
 When identifying concepts for each task, be SPECIFIC and distinguish between:
@@ -53,7 +52,7 @@ This helps the next agent (code generator) determine which concepts need example
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
-    "overview": "Brief 2-3 sentence overview of the assignment",
+    "overview": "Brief 2 sentence overview of the assignment",
     "total_estimated_time": "X hours",
     "tasks": [
         {{
@@ -108,77 +107,93 @@ Here's the JSON:
 {{"tasks": []}} // This is the breakdown"""
 
 
-def get_codegen_prompt(task_description: str, language: str, concepts: list, known_language: str = None) -> str:
+# backend/utils/agent_prompts.py
+
+# Add this new function at the end of the file
+
+def get_batch_codegen_prompt(tasks_data: list) -> str:
     """
-    Agent 2: Code Generator (UPDATED v2)
-    Generate starter code template with TODO comments and COMPLETE working concept examples
+    Agent 2: Batch Code Generator
+    Generate starter code templates for multiple tasks in a single API call.
     
     Args:
-        task_description: What the task requires
-        language: Target programming language
-        concepts: List of concepts needed for this task
-        known_language: Optional - student's familiar language for comparisons
+        tasks_data: List of task dictionaries with task_description, programming_language, concepts, known_language
+        
+    Returns:
+        Prompt string for batch code generation
     """
-    concepts_str = ", ".join(concepts)
     
-    # Note: Concept examples are now generated on-demand, not during initial code generation
-    # This reduces processing time and API load
-    comparison_instruction = ""
-    if known_language:
-        comparison_instruction = f"""
-The student already knows {known_language} and is learning {language}.
-This context is provided for reference, but concept examples will be generated on-demand when requested.
+    # Build descriptions for all tasks
+    tasks_description = ""
+    for i, task in enumerate(tasks_data, 1):
+        concepts_str = ", ".join(task.get('concepts', []))
+        known_lang = task.get('known_language')
+        known_lang_note = f" (Student knows {known_lang})" if known_lang else ""
+        
+        tasks_description += f"""
+=== TASK {i} ===
+Description: {task['task_description']}
+Language: {task['programming_language']}
+Concepts: {concepts_str}{known_lang_note}
+
 """
     
-    return f"""You are helping a student learn programming by providing starter code templates.
+    return f"""You are generating starter code templates for multiple tasks in a programming assignment.
 
-Task: {task_description}
-Language: {language}
-Concepts: {concepts_str}
-{comparison_instruction}
+Generate starter code for ALL {len(tasks_data)} tasks below in ONE response.
 
-CRITICAL RULES FOR STARTER CODE:
-1. Generate ONLY a code template with proper structure
+{tasks_description}
+
+CRITICAL RULES FOR ALL TASKS:
+1. Generate ONLY code templates with proper structure
 2. Include function/method signatures but NO implementations
 3. Add clear TODO comments explaining what each part should do
 4. Include necessary imports and basic setup
 5. Do NOT implement the actual logic - that's for the student to learn!
-
-CRITICAL RULES FOR CONCEPT EXAMPLES:
-1. DO NOT generate concept examples during initial code generation
-2. Concept examples will be generated on-demand when the user requests them
-3. ALWAYS set concept_examples to null to speed up processing
-4. This reduces API load and improves response time
-
-NOTE: Concept examples are generated on-demand when users click "Show Example" on specific concepts.
-Do not include concept_examples in your response - always set it to null.
+6. Do NOT generate concept examples - they are generated on-demand when requested
+7. Always set concept_examples to null
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
-    "code_snippet": "the complete starter code template with TODO comments",
-    "instructions": "brief instructions on how to approach completing the TODOs",
-    "todos": ["list of TODO items in the order they should be completed"],
-    "concept_examples": null
+    "tasks": [
+        {{
+            "task_number": 1,
+            "code_snippet": "the complete starter code template with TODO comments and \\n for newlines",
+            "instructions": "brief instructions on how to approach completing the TODOs",
+            "todos": ["list of TODO items in the order they should be completed"]
+        }},
+        {{
+            "task_number": 2,
+            "code_snippet": "...",
+            "instructions": "...",
+            "todos": [...]
+        }}
+        // ... continue for all {len(tasks_data)} tasks
+    ]
 }}
 
-IMPORTANT: Always set "concept_examples" to null. Examples are generated on-demand when users request them.
+IMPORTANT:
+- Generate code for ALL {len(tasks_data)} tasks
+- Each code_snippet should be 10-30 lines (concise templates)
+- Use \\n for newlines in code_snippet strings
+- Keep instructions brief (2-3 sentences)
+- Include 2-4 TODO items per task
+- Do NOT wrap in markdown code blocks
+- Response must be ONLY valid JSON
+- Start with {{ and end with }}
+- Escape all quotes and backslashes properly
 
-Example TODO comment style in the starter code:
+EXAMPLE TODO COMMENT STYLE:
 // TODO: Implement input validation here
-// TODO: Create a loop to process each item  
+// TODO: Create a loop to process each item
 // TODO: Call the helper function and store the result
 
 CRITICAL RESPONSE FORMAT:
-- Your response must be ONLY valid JSON
-- Do NOT wrap in markdown code blocks (no ``` or ```json)
-- Do NOT include any explanation before or after the JSON
-- The "code_snippet" field should contain code as a string with \\n for newlines
-- Always set "concept_examples" to null (not an empty dict)
-- Ensure all strings are properly escaped (especially quotes and backslashes)
-- Start your response with {{ and end with }}
+- Response must be ONLY valid JSON
+- No markdown, no explanations, just JSON
+- All {len(tasks_data)} tasks must be included
+- No code blocks or extra formatting"""
 
-EXAMPLE VALID RESPONSE START:
-{{"code_snippet": "def example():\\n    pass", "instructions": "Complete the function", "todos": ["Add logic"], "concept_examples": null}}"""
 
 
 def get_helper_prompt(task_description: str, concepts: list, student_code: str,

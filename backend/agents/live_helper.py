@@ -37,7 +37,7 @@ class LiveHelperAgent:
         for attempt in range(self.max_retries):
             try:
                 logger.info(f"Live Helper Agent attempt {attempt + 1}/{self.max_retries}")
-                response_text = self.client.generate_response(prompt, max_tokens=1500)
+                response_text = self.client.generate_response(prompt, max_tokens=1000)
                 
                 data = extract_json_from_response(response_text)
 

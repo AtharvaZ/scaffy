@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAppStore } from '../store/useAppStore';
-import { CodeEditor } from '../components/CodeEditor';
-import { RunButton } from '../components/RunButton';
-import { TestResults } from '../components/TestResults';
-import { FeedbackCard } from '../components/FeedbackCard';
-import { ProgressIndicator } from '../components/ProgressIndicator';
-import { SuccessCelebration } from '../components/SuccessCelebration';
-import { GetHint } from '../components/GetHint';
-import { GetConceptExample } from '../components/GetConceptExample';
-import { TodoChecklist } from '../components/TodoChecklist';
-import { DarkModeToggle } from '../components/DarkModeToggle';
-import { runCode } from '../api/endpoints';
-import { safeApiCall } from '../api/client';
-import { Button } from '../components/ui/button';
-import { ArrowLeft, Lightbulb, Code2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAppStore } from "../store/useAppStore";
+import { CodeEditor } from "../components/CodeEditor";
+import { RunButton } from "../components/RunButton";
+import { TestResults } from "../components/TestResults";
+import { FeedbackCard } from "../components/FeedbackCard";
+import { ProgressIndicator } from "../components/ProgressIndicator";
+import { SuccessCelebration } from "../components/SuccessCelebration";
+import { GetHint } from "../components/GetHint";
+import { GetConceptExample } from "../components/GetConceptExample";
+import { TodoList } from "../components/TodoList";
+import { DarkModeToggle } from "../components/DarkModeToggle";
+import { runCode } from "../api/endpoints";
+import { safeApiCall } from "../api/client";
+import { Button } from "../components/ui/button";
+import { ArrowLeft, Lightbulb, Code2 } from "lucide-react";
+import type { RunnerResult } from "../types";
 
 export function EditorPage() {
   const navigate = useNavigate();
@@ -28,34 +29,36 @@ export function EditorPage() {
     feedback,
     showFeedback,
     attemptCount,
-    studentId,
-    assignmentId,
+    // studentId,
+    // assignmentId,
     startTime,
     language,
     proficientLanguage,
-    isLoading,
+    //isLoading,
     error,
     addCompletedTask,
+    toggleCompletedTask,
     setStudentCode,
     setRunnerResult,
     setIsRunning,
     setFeedback,
     setShowFeedback,
-    incrementAttemptCount,
-    setIsLoading,
+    // incrementAttemptCount,
+    // setIsLoading,
     setError,
   } = useAppStore();
 
   const [showHelpPanel, setShowHelpPanel] = useState(false);
-  const [helpMode, setHelpMode] = useState<'hint' | 'example'>('hint');
-  const [currentTodoIndex, setCurrentTodoIndex] = useState(0);
-  const [completedTodos, setCompletedTodos] = useState<Set<number>>(new Set());
-  const [autoTriggerQuestion, setAutoTriggerQuestion] = useState<string | undefined>(undefined);
+  const [helpMode, setHelpMode] = useState<"hint" | "example">("hint");
+  const [autoTriggerQuestion, setAutoTriggerQuestion] = useState<
+    string | undefined
+  >(undefined);
+  const [selectedTaskForExamples, setSelectedTaskForExamples] = useState<number | undefined>(undefined);
 
   // Redirect if no scaffold
   useEffect(() => {
     if (!scaffold) {
-      navigate('/task');
+      navigate("/task");
     }
   }, [scaffold, navigate]);
 
@@ -69,36 +72,32 @@ export function EditorPage() {
       // Run the student's code
       const result = await safeApiCall(
         () => runCode(studentCode, language),
-        'Failed to run code'
+        "Failed to run code"
       );
 
       if (result) {
         // Convert to runner result format that TestResults component expects
-        const runnerResult = {
-          tests_passed: result.success ? 1 : 0,
-          tests_failed: result.success ? 0 : 1,
-          runtime_ms: result.execution_time,
-          stdout: result.output || '',
-          stderr: result.error || '',
-          failed_tests: result.success ? [] : [{
-            test_name: 'Code Execution',
-            error_message: result.error || 'Unknown error',
-            line_number: null
-          }],
-          execution_time: result.execution_time,
-          output: result.output,
-          errors: result.error ? [result.error] : [],
+        const runnerResult: RunnerResult = {
+          exit_code: result.exit_code || 0,
+          tests_passed: result.tests_passed || 0,
+          tests_failed: result.tests_failed || 0,
+          runtime_ms: result.runtime_ms || 0,
+          stdout: result.stdout || "",
+          stderr: result.stderr || "",
+          failed_tests: result.failed_tests || [],
+          timeout: result.timeout,
+          security_violation: result.security_violation,
         };
-        
+
         setRunnerResult(runnerResult);
 
         // If code runs successfully, mark current task as completed
-        if (result.success && !result.error) {
+        if (result.tests_passed > 0 && result.tests_failed === 0) {
           addCompletedTask(currentTask);
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsRunning(false);
     }
@@ -109,34 +108,31 @@ export function EditorPage() {
 
     // Build error message from runner result
     const errorMessages: string[] = [];
-    
+
     if (runnerResult.stderr) {
       errorMessages.push(runnerResult.stderr);
     }
-    
+
     if (runnerResult.failed_tests && runnerResult.failed_tests.length > 0) {
-      runnerResult.failed_tests.forEach(test => {
+      runnerResult.failed_tests.forEach((test) => {
         if (test.error_message) {
           errorMessages.push(test.error_message);
         }
       });
     }
-    
-    if (runnerResult.errors && runnerResult.errors.length > 0) {
-      errorMessages.push(...runnerResult.errors);
-    }
 
     // Create a question that includes the error information
-    const errorText = errorMessages.length > 0 
-      ? errorMessages.join('\n').substring(0, 500) // Limit error text length
-      : 'My code has an error and I need help fixing it.';
-    
+    const errorText =
+      errorMessages.length > 0
+        ? errorMessages.join("\n").substring(0, 500) // Limit error text length
+        : "My code has an error and I need help fixing it.";
+
     const question = `My code has errors when I run it. Here are the error messages:\n\n${errorText}\n\nCan you help me understand what's wrong and how to fix it?`;
 
     // Open the help panel with hint mode and auto-trigger
-    setHelpMode('hint');
+    setHelpMode("hint");
     setShowHelpPanel(true);
-    
+
     // Store the question for the GetHint component to use
     setAutoTriggerQuestion(question);
   };
@@ -149,7 +145,7 @@ export function EditorPage() {
   // Keyboard shortcut for running tests
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         if (!isRunning && scaffold) {
           handleRunTests();
@@ -157,8 +153,8 @@ export function EditorPage() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [isRunning, scaffold]);
 
   const allTestsPassed =
@@ -177,12 +173,19 @@ export function EditorPage() {
         <div className="mx-auto max-w-[1440px] px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/task')} className="text-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/task")}
+                className="text-sm"
+              >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Tasks
               </Button>
               <Link to="/" className="flex items-center">
-                <span className="text-[15px] font-semibold text-black dark:text-white">Scaffy</span>
+                <span className="text-[15px] font-semibold text-black dark:text-white">
+                  Scaffy
+                </span>
               </Link>
             </div>
             <div className="flex items-center gap-8">
@@ -199,59 +202,22 @@ export function EditorPage() {
             {/* Error Display */}
             {error && (
               <div className="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4">
-                <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+                <p className="text-sm text-red-800 dark:text-red-400">
+                  {error}
+                </p>
               </div>
             )}
 
             {/* Progress Indicator */}
-            {scaffold && (() => {
-              const currentTodos = scaffold.task_todos?.[`task_${currentTask}`] || scaffold.todos || [];
-              const totalTodos = currentTodos.length;
-              const completedTodosCount = completedTodos.size;
-              
-              // Calculate the current task index based on completed tasks
-              const calculateCurrentTaskIndex = () => {
-                if (totalTodos > 0) {
-                  // For todos, use the current todo index
-                  return currentTodoIndex;
-                } else {
-                  // For main tasks, find the first incomplete task
-                  const totalTasks = scaffold.todo_list.length;
-                  // Check if all tasks are complete
-                  if (completedTasks.size >= totalTasks) {
-                    // All tasks complete, show the last task (0-indexed, so totalTasks - 1)
-                    return totalTasks - 1;
-                  } else {
-                    // Find the first incomplete task
-                    for (let i = 0; i < totalTasks; i++) {
-                      if (!completedTasks.has(i)) {
-                        return i;
-                      }
-                    }
-                    // Fallback: if somehow we get here, return the last task
-                    return totalTasks - 1;
-                  }
-                }
-              };
-              
-              return totalTodos > 0 ? (
-                <div className="mb-4">
-                  <ProgressIndicator
-                    totalTasks={totalTodos}
-                    completedTasks={completedTodosCount}
-                    currentTask={currentTodoIndex}
-                  />
-                </div>
-              ) : (
-                <div className="mb-4">
-                  <ProgressIndicator
-                    totalTasks={scaffold.todo_list.length}
-                    completedTasks={completedTasks.size}
-                    currentTask={calculateCurrentTaskIndex()}
-                  />
-                </div>
-              );
-            })()}
+            {scaffold && (
+              <div className="mb-4">
+                <ProgressIndicator
+                  totalTasks={scaffold.todo_list.length}
+                  completedTasks={completedTasks.size}
+                  currentTask={currentTask}
+                />
+              </div>
+            )}
 
             {/* Main Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -271,17 +237,19 @@ export function EditorPage() {
                     <div className="flex items-center gap-2">
                       <Button
                         onClick={() => {
-                          if (showHelpPanel && helpMode === 'hint') {
+                          if (showHelpPanel && helpMode === "hint") {
                             setShowHelpPanel(false);
                           } else {
-                            setHelpMode('hint');
+                            setHelpMode("hint");
                             setShowHelpPanel(true);
                           }
                         }}
                         variant="outline"
                         size="sm"
                         className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
-                          showHelpPanel && helpMode === 'hint' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                          showHelpPanel && helpMode === "hint"
+                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300"
+                            : ""
                         }`}
                       >
                         <Lightbulb className="mr-2 h-4 w-4" />
@@ -289,17 +257,24 @@ export function EditorPage() {
                       </Button>
                       <Button
                         onClick={() => {
-                          if (showHelpPanel && helpMode === 'example') {
+                          if (showHelpPanel && helpMode === "example") {
                             setShowHelpPanel(false);
+                            setSelectedTaskForExamples(undefined);
                           } else {
-                            setHelpMode('example');
+                            setHelpMode("example");
                             setShowHelpPanel(true);
+                            // Initialize with first task if not already selected
+                            if (selectedTaskForExamples === undefined) {
+                              setSelectedTaskForExamples(0);
+                            }
                           }
                         }}
                         variant="outline"
                         size="sm"
                         className={`border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 ${
-                          showHelpPanel && helpMode === 'example' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : ''
+                          showHelpPanel && helpMode === "example"
+                            ? "bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300"
+                            : ""
                         }`}
                       >
                         <Code2 className="mr-2 h-4 w-4" />
@@ -325,27 +300,24 @@ export function EditorPage() {
                 </div>
               </div>
 
-              {/* Right Column - TODO Checklist */}
+              {/* Right Column - Task List */}
               <div className="lg:col-span-1">
-                {scaffold && (
-                  <TodoChecklist
-                    todos={scaffold.task_todos?.[`task_${currentTask}`] || scaffold.todos || []}
-                    currentTodoIndex={currentTodoIndex}
-                    onTodoIndexChange={(index) => {
-                      setCurrentTodoIndex(index);
+                {scaffold && scaffold.todo_list && (
+                  <TodoList
+                    todos={scaffold.todo_list}
+                    currentTask={currentTask}
+                    onTaskSelect={(taskIndex: number) => {
+                      // Toggle task completion when checkbox is clicked
+                      toggleCompletedTask(taskIndex);
                     }}
-                    onTodoToggle={(index) => {
-                      setCompletedTodos(prev => {
-                        const newSet = new Set(prev);
-                        if (newSet.has(index)) {
-                          newSet.delete(index);
-                        } else {
-                          newSet.add(index);
-                        }
-                        return newSet;
-                      });
+                    completedTasks={completedTasks}
+                    selectedTaskForExamples={selectedTaskForExamples}
+                    onTaskSelectForExamples={(taskIndex: number) => {
+                      // Only change task selection if example panel is already open
+                      if (showHelpPanel && helpMode === "example") {
+                        setSelectedTaskForExamples(taskIndex);
+                      }
                     }}
-                    completedTodos={completedTodos}
                   />
                 )}
               </div>
@@ -379,13 +351,13 @@ export function EditorPage() {
         {/* Help Panel Sidebar */}
         {showHelpPanel && (
           <div className="w-[400px] h-full bg-white dark:bg-black border-l border-gray-200/60 dark:border-gray-800/60 flex-shrink-0">
-            {helpMode === 'hint' ? (
+            {helpMode === "hint" ? (
               <GetHint
                 code={studentCode}
                 language={language}
                 currentTask={currentTask}
                 scaffold={scaffold}
-                currentTodoIndex={currentTodoIndex}
+                currentTodoIndex={0}
                 knownLanguage={proficientLanguage}
                 onClose={() => {
                   setShowHelpPanel(false);
@@ -401,6 +373,7 @@ export function EditorPage() {
                 scaffold={scaffold}
                 knownLanguage={proficientLanguage}
                 onClose={() => setShowHelpPanel(false)}
+                selectedTaskForExamples={selectedTaskForExamples}
               />
             )}
           </div>
@@ -409,4 +382,3 @@ export function EditorPage() {
     </div>
   );
 }
-
