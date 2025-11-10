@@ -68,8 +68,9 @@ Scaffy_frontend/
 │   │   │   ├── LandingPage.tsx     # Home page
 │   │   │   ├── TaskPage.tsx        # Task breakdown view
 │   │   │   └── EditorPage.tsx      # Code editor page
-│   │   ├── store/          # Zustand state management
-│   │   └── types/          # TypeScript type definitions
+│   │   |── store/          # Zustand state management
+│   │   |── types/          # TypeScript type definitions
+|   |   |-- lib/
 │   └── package.json
 │
 └── README.md
