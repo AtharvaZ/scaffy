@@ -184,6 +184,7 @@ cython_debug/
 node_modules/
 .vite/
 .DS_Store
+src/.DS_Store
 
 # Test files
 test_*.py
