@@ -109,12 +109,12 @@ Scaffy_frontend/
 
    Create a `.env` file in the `backend/` directory:
    ```env
-   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   CLAUDE_API_KEY=your_anthropic_api_key_here
    ```
 
-   Create a `.env` file in the `frontend/` directory (optional, defaults to `http://localhost:8000`):
+   Create a `.env` file in the `frontend/` directory :
    ```env
-   VITE_API_BASE_URL=http://localhost:8000
+   VITE_API_BASE_URL=http://127.0.0.1:5000
    ```
 
 ### Running the Application
@@ -123,9 +123,9 @@ Scaffy_frontend/
    ```bash
    cd backend
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   python main.py
+   uvicorn main:app --reload --port 5000
    ```
-   The backend will run on `http://localhost:8000`
+   The backend will run on `http://127.0.0.1:5000`
 
 2. **Start the frontend development server** (in a new terminal)
    ```bash
