@@ -145,7 +145,7 @@ export function AssignmentInput({
                 htmlFor="proficient-language"
                 className="text-sm font-medium text-black dark:text-white"
               >
-                Language You Know
+                Language You Know <span className="text-gray-400 text-xs">(Optional)</span>
               </label>
               <Select
                 id="proficient-language"
@@ -154,7 +154,7 @@ export function AssignmentInput({
                 disabled={loading}
                 className="border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500"
               >
-                <option value="">None</option>
+                <option value="">-- Select a language --</option>
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
