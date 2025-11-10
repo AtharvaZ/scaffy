@@ -115,7 +115,7 @@ export function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-[48px] leading-[1.1] font-bold tracking-[-0.02em] mb-4">
               <span className="text-black dark:text-white">Break down </span>
-              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">complex code</span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">complex code</span>
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Watch how Scaffy transforms overwhelming assignments into manageable tasks
@@ -133,7 +133,7 @@ export function LandingPage() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-[48px] leading-[1.1] font-bold tracking-[-0.02em] mb-4">
               <span className="text-black dark:text-white">Your learning, </span>
-              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">accelerated.</span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">accelerated.</span>
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               While ChatGPT generates code, Scaffy compiles it, runs it, and explains your specific errors.
@@ -263,7 +263,7 @@ export function LandingPage() {
           <div className="text-center w-full flex flex-col items-center">
             <h2 className="text-[56px] leading-[1.1] font-bold tracking-[-0.02em] mb-6">
               <span className="text-black dark:text-white">Start building </span>
-              <span className="text-black dark:text-white">today.</span>
+              <span className="bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">today.</span>
             </h2>
             <div className="flex items-center justify-center gap-3 w-full">
               <Link to="/task">

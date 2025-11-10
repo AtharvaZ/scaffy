@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Select } from './ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import type { AssignmentInputProps } from '../types';
-import { Loader2, FileText, Type } from 'lucide-react';
-import { PDFUploadZone } from './PDFUploadZone';
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Select } from "./ui/select";
+import type { AssignmentInputProps } from "../types";
+import { Loader2, FileText, Type } from "lucide-react";
+import { PDFUploadZone } from "./PDFUploadZone";
 
-export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInputProps) {
-  const [inputMode, setInputMode] = useState<'text' | 'pdf'>('text');
-  const [assignmentText, setAssignmentText] = useState('');
-  const [language, setLanguage] = useState('python');
-  const [proficientLanguage, setProficientLanguage] = useState('python');
+export function AssignmentInput({
+  onAssignmentSubmit,
+  loading,
+}: AssignmentInputProps) {
+  const [inputMode, setInputMode] = useState<"text" | "pdf">("text");
+  const [assignmentText, setAssignmentText] = useState("");
+  const [language, setLanguage] = useState("python");
+  const [proficientLanguage, setProficientLanguage] = useState("");
 
   const handleSubmit = () => {
     if (assignmentText.trim()) {
@@ -22,27 +24,31 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
   const handleTextExtracted = (text: string) => {
     setAssignmentText(text);
     // Switch to text mode after extraction so user can edit
-    setInputMode('text');
+    setInputMode("text");
   };
 
   return (
     <div className="w-full max-w-2xl">
       <div className="rounded-2xl border border-gray-200/60 dark:border-gray-800/60 bg-white dark:bg-black p-8 shadow-sm">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold tracking-tight text-black dark:text-white">Create Assignment</h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Enter your assignment details to get started</p>
+          <h2 className="text-xl font-semibold tracking-tight text-black dark:text-white">
+            Create Assignment
+          </h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Enter your assignment details to get started
+          </p>
         </div>
         <div className="space-y-6">
           {/* Mode Toggle */}
           <div className="flex items-center gap-2 p-1 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <button
               type="button"
-              onClick={() => setInputMode('text')}
+              onClick={() => setInputMode("text")}
               disabled={loading}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                inputMode === 'text'
-                  ? 'bg-white dark:bg-gray-800 text-black dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                inputMode === "text"
+                  ? "bg-white dark:bg-gray-800 text-black dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <Type className="h-4 w-4" />
@@ -50,12 +56,12 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
             </button>
             <button
               type="button"
-              onClick={() => setInputMode('pdf')}
+              onClick={() => setInputMode("pdf")}
               disabled={loading}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                inputMode === 'pdf'
-                  ? 'bg-white dark:bg-gray-800 text-black dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                inputMode === "pdf"
+                  ? "bg-white dark:bg-gray-800 text-black dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <FileText className="h-4 w-4" />
@@ -64,9 +70,12 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
           </div>
 
           {/* Text Input Mode */}
-          {inputMode === 'text' && (
+          {inputMode === "text" && (
             <div className="space-y-2">
-              <label htmlFor="assignment-text" className="text-sm font-medium text-black dark:text-white">
+              <label
+                htmlFor="assignment-text"
+                className="text-sm font-medium text-black dark:text-white"
+              >
                 Assignment Description
               </label>
               <Textarea
@@ -82,7 +91,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
           )}
 
           {/* PDF Upload Mode */}
-          {inputMode === 'pdf' && (
+          {inputMode === "pdf" && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-black dark:text-white">
                 Upload PDF Assignment
@@ -111,7 +120,10 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="language" className="text-sm font-medium text-black dark:text-white">
+              <label
+                htmlFor="language"
+                className="text-sm font-medium text-black dark:text-white"
+              >
                 Language to Learn
               </label>
               <Select
@@ -124,10 +136,15 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
+                <option value="c">C</option>
+                <option value="c++">C++</option>
               </Select>
             </div>
             <div className="space-y-2">
-              <label htmlFor="proficient-language" className="text-sm font-medium text-black dark:text-white">
+              <label
+                htmlFor="proficient-language"
+                className="text-sm font-medium text-black dark:text-white"
+              >
                 Language You Know
               </label>
               <Select
@@ -137,6 +154,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
                 disabled={loading}
                 className="border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-500"
               >
+                <option value="">None</option>
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
@@ -157,7 +175,7 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
                 Processing...
               </>
             ) : (
-              'Submit Assignment'
+              "Submit Assignment"
             )}
           </Button>
         </div>
@@ -165,4 +183,3 @@ export function AssignmentInput({ onAssignmentSubmit, loading }: AssignmentInput
     </div>
   );
 }
-
