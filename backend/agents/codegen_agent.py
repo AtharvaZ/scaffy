@@ -26,12 +26,16 @@ class CodegenAgent:
         # Convert BoilerPlateCodeSchema objects to dicts for the prompt function
         tasks_dict_list = []
         for task in tasks_data:
-            tasks_dict_list.append({
+            task_dict = {
                 'task_description': task.task_description,
                 'programming_language': task.programming_language,
                 'concepts': task.concepts,
                 'known_language': task.known_language
-            })
+            }
+            # Add filename if it exists
+            if hasattr(task, 'filename'):
+                task_dict['filename'] = task.filename
+            tasks_dict_list.append(task_dict)
         
         # Get the batch prompt from agent_prompts
         prompt = get_batch_codegen_prompt(tasks_dict_list)
@@ -70,6 +74,8 @@ class CodegenAgent:
                         raise ValueError(f"Task {i} missing 'instructions' field")
                     if "todos" not in task_data:
                         raise ValueError(f"Task {i} missing 'todos' field")
+                    if "filename" not in task_data:
+                        raise ValueError(f"Task {i} missing 'filename' field")
 
                     # Map "code" to "code_snippet" if needed
                     if "code" in task_data and "code_snippet" not in task_data:
@@ -83,7 +89,8 @@ class CodegenAgent:
                         code_snippet=task_data["code_snippet"],
                         instructions=task_data["instructions"],
                         todos=task_data["todos"],
-                        concept_examples=None  # Always null - generated on-demand
+                        concept_examples=None,  # Always null - generated on-demand
+                        filename=task_data["filename"]  # NEW: include filename
                     ))
 
                 logger.info(f"Successfully generated {len(results)} starter codes in batch on attempt {attempt + 1}")

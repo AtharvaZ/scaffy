@@ -9,6 +9,9 @@ export function CodeEditor({ initialCode, language, onChange, readOnly = false }
     editorRef.current = editor;
   };
 
+  // Normalize language for Monaco Editor
+  const monacoLanguage = language === 'c++' ? 'cpp' : language;
+
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-center justify-between">
@@ -17,7 +20,7 @@ export function CodeEditor({ initialCode, language, onChange, readOnly = false }
       <div className="h-[600px] overflow-hidden rounded-lg border border-black/5 dark:border-border vercel-shadow">
         <Editor
           height="100%"
-          language={language}
+          language={monacoLanguage}
           value={initialCode}
           onChange={(value) => onChange(value || '')}
           theme="vs-dark"

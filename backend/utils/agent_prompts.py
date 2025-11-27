@@ -3,19 +3,24 @@ Prompt templates for all agents
 Clean, focused prompts for each agent's specific task
 """
 
-def get_test_generation_prompt(assignment_text: str, tasks: list, target_language: str) -> str:
+def get_test_generation_prompt(assignment_text: str, files: list, target_language: str) -> str:
     """
-    Generate test cases based on assignment requirements
+    Generate test cases based on assignment requirements (UPDATED FOR MULTI-FILE)
     """
-    tasks_summary = "\n".join([f"Task {t.get('id', i+1)}: {t.get('title', '')} - {t.get('description', '')}"
-                               for i, t in enumerate(tasks)])
+    # Build tasks summary from file structure
+    tasks_summary = ""
+    for file_data in files:
+        filename = file_data.get('filename', 'unknown')
+        tasks_summary += f"\n=== File: {filename} ===\n"
+        for task in file_data.get('tasks', []):
+            tasks_summary += f"Task {task.get('id', '')}: {task.get('title', '')} - {task.get('description', '')}\n"
 
     return f"""You are a test case generator for programming assignments. Your task is to generate comprehensive test cases.
 
 Assignment:
 {assignment_text}
 
-Tasks Breakdown:
+Tasks Breakdown by File:
 {tasks_summary}
 
 Target Language: {target_language}
@@ -80,14 +85,14 @@ EXAMPLE VALID RESPONSE:
 [{{"test_name": "test_empty_input", "function_name": "reverse_string", "input_data": "\\"\\"", "expected_output": "\\"\\"", "description": "Handle empty string", "test_type": "edge"}}]"""
 
 
-def get_parser_prompt(assignment_text: str, target_language: str, 
+def get_parser_prompt(assignment_text: str, target_language: str,
                       known_language: str, experience_level: str) -> str:
     """
-    Agent 1: Assignment Parser (UPDATED)
-    Parse assignment and break into ordered tasks with dependencies
+    Agent 1: Assignment Parser (UPDATED FOR MULTI-FILE)
+    Parse assignment and break into ordered tasks organized by files
     """
     known_lang_context = f"\nKnown Language: {known_language}" if known_language else "\nNo prior programming experience"
-    
+
     return f"""You are an educational AI assistant that helps students learn programming by breaking down complex assignments.
 
 Assignment Text:
@@ -97,11 +102,12 @@ Target Language: {target_language}
 Student Experience Level: {experience_level}{known_lang_context}
 
 Your task is to:
-1. Parse the assignment and identify all required tasks
-2. Order tasks by logical dependencies (what must be done first)
-3. Break down complex tasks into smaller, manageable subtasks
-4. Estimate time for each task (be realistic)
-5. Identify key programming concepts for each task
+1. Identify all files that need to be created for this assignment
+2. For each file, parse and identify required tasks
+3. Order tasks by logical dependencies (what must be done first)
+4. Break down complex tasks into smaller, manageable subtasks
+5. Estimate time for each task (be realistic)
+6. Identify key programming concepts for each task
 
 IMPORTANT RULES:
 - Do NOT provide complete solutions or full implementations
@@ -109,6 +115,14 @@ IMPORTANT RULES:
 - Ensure dependencies are realistic (task 3 cannot depend on task 5)
 - Order tasks in a logical learning progression
 - Each task should be completable in one sitting (20-40 minutes typically)
+- If assignment requires multiple files, organize tasks by file
+- If assignment is single-file, still return one file in the structure
+
+FILE IDENTIFICATION GUIDELINES:
+- Look for explicit file mentions in the assignment (e.g., "Create main.py and utils.py")
+- Infer logical file separation (e.g., separate config, main logic, utilities)
+- For simple assignments, one file is fine
+- Include proper file extensions based on target language
 
 CONCEPT IDENTIFICATION GUIDELINES:
 When identifying concepts for each task, be SPECIFIC and distinguish between:
@@ -125,93 +139,70 @@ Good concept examples:
 - "Lambda expressions" as a distinct concept
 - "Delegates/Events" when applicable
 
-This helps the next agent (code generator) determine which concepts need examples based on the student's background.
-
 Return ONLY a valid JSON object with this EXACT structure:
 {{
     "overview": "Brief 2 sentence overview of the assignment",
     "total_estimated_time": "X hours",
-    "tasks": [
+    "files": [
         {{
-            "id": 1,
-            "title": "Short descriptive title",
-            "description": "What needs to be accomplished in this task",
-            "dependencies": [],
-            "estimated_time": "X minutes",
-            "concepts": ["specific_concept1", "specific_concept2", "language_feature"]
+            "filename": "main.py",
+            "purpose": "Brief description of this file's role",
+            "tasks": [
+                {{
+                    "id": 1,
+                    "title": "Short descriptive title",
+                    "description": "What needs to be accomplished in this task",
+                    "dependencies": [],
+                    "estimated_time": "X minutes",
+                    "concepts": ["specific_concept1", "specific_concept2"]
+                }}
+            ]
         }}
     ]
 }}
 
-EXAMPLE (good concept specificity):
-{{
-    "tasks": [
-        {{
-            "id": 1,
-            "concepts": ["File I/O", "StreamReader", "using statement"]
-        }},
-        {{
-            "id": 2,
-            "concepts": ["Threading", "Thread Safety", "Locks", "Shared state management"]
-        }},
-        {{
-            "id": 3,
-            "concepts": ["LINQ queries", "Lambda expressions", "IEnumerable"]
-        }}
-    ]
-}}
+EXAMPLES:
+Single-file: {{"overview": "...", "total_estimated_time": "2 hours", "files": [{{"filename": "calculator.py", "purpose": "Main calculator", "tasks": [{{"id": 1, "title": "...", "description": "...", "dependencies": [], "estimated_time": "30 minutes", "concepts": ["Functions"]}}]}}]}}
+
+Multi-file: {{"overview": "...", "total_estimated_time": "8 hours", "files": [{{"filename": "server.py", "purpose": "...", "tasks": [{{"id": 1, ...}}]}}, {{"filename": "client.py", "purpose": "...", "tasks": [{{"id": 2, ...}}]}}]}}
 
 CRITICAL RESPONSE FORMAT:
-- Your response must be ONLY valid JSON
-- Do NOT wrap in markdown code blocks (no ``` or ```json)
-- Do NOT include any explanation before or after the JSON
-- Do NOT include comments in the JSON
-- Ensure all strings are properly escaped
-- Ensure all JSON brackets and braces are balanced
-- Start your response with {{ and end with }}
-
-EXAMPLE VALID RESPONSE:
-{{"overview": "Brief description", "total_estimated_time": "2 hours", "tasks": [{{"id": 1, "title": "Task 1", "description": "Do X", "dependencies": [], "estimated_time": "30 minutes", "concepts": ["concept1"]}}]}}
-
-INVALID RESPONSES (DO NOT DO THIS):
-```json
-{{"tasks": []}}
-```
-
-Here's the JSON:
-{{"tasks": []}}
-
-{{"tasks": []}} // This is the breakdown"""
+- ONLY valid JSON, no markdown, no explanations
+- Start with {{ and end with }}
+- Task IDs unique across ALL files
+- No code blocks, no comments"""
 
 
 
 def get_batch_codegen_prompt(tasks_data: list) -> str:
     """
-    Agent 2: Batch Code Generator
+    Agent 2: Batch Code Generator (UPDATED FOR MULTI-FILE)
     Generate starter code templates for multiple tasks in a single API call.
-    
+
     Args:
-        tasks_data: List of task dictionaries with task_description, programming_language, concepts, known_language
-        
+        tasks_data: List of task dictionaries with task_description, programming_language, concepts, known_language, filename
+
     Returns:
         Prompt string for batch code generation
     """
-    
+
     # Build descriptions for all tasks
     tasks_description = ""
     for i, task in enumerate(tasks_data, 1):
         concepts_str = ", ".join(task.get('concepts', []))
         known_lang = task.get('known_language')
         known_lang_note = f" (Student knows {known_lang})" if known_lang else ""
-        
+        filename = task.get('filename', 'unknown.py')
+
         tasks_description += f"""
 === TASK {i} ===
+Filename: {filename}
 Description: {task['task_description']}
 Language: {task['programming_language']}
 Concepts: {concepts_str}{known_lang_note}
 
 """
-    
+
     return f"""You are generating starter code templates for multiple tasks in a programming assignment.
 
 Generate starter code for ALL {len(tasks_data)} tasks below in ONE response.
@@ -226,18 +217,21 @@ CRITICAL RULES FOR ALL TASKS:
 5. Do NOT implement the actual logic - that's for the student to learn!
 6. Do NOT generate concept examples - they are generated on-demand when requested
 7. Always set concept_examples to null
+8. Each task belongs to a specific file - include the filename in the response
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{
     "tasks": [
         {{
             "task_number": 1,
+            "filename": "the filename this task belongs to",
             "code_snippet": "the complete starter code template with TODO comments and \\n for newlines",
             "instructions": "brief instructions on how to approach completing the TODOs",
             "todos": ["list of TODO items in the order they should be completed"]
         }},
         {{
             "task_number": 2,
+            "filename": "the filename this task belongs to",
             "code_snippet": "...",
             "instructions": "...",
             "todos": [...]
@@ -252,6 +246,7 @@ IMPORTANT:
 - Use \\n for newlines in code_snippet strings
 - Keep instructions brief (2-3 sentences)
 - Include 2-4 TODO items per task
+- Include the filename field for each task
 - Do NOT wrap in markdown code blocks
 - Response must be ONLY valid JSON
 - Start with {{ and end with }}
@@ -266,6 +261,7 @@ CRITICAL RESPONSE FORMAT:
 - Response must be ONLY valid JSON
 - No markdown, no explanations, just JSON
 - All {len(tasks_data)} tasks must be included
+- Each task must include the filename field
 - No code blocks or extra formatting"""
 
 

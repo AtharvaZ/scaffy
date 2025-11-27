@@ -10,6 +10,13 @@ export interface TaskSchema {
   concepts: string[];
 }
 
+// NEW: File Schema for multi-file support
+export interface FileSchema {
+  filename: string;
+  purpose: string;
+  tasks: TaskSchema[];
+}
+
 // Test Case Schema (from backend)
 export interface TestCase {
   test_name: string;
@@ -20,28 +27,30 @@ export interface TestCase {
   test_type: "normal" | "edge" | "error";
 }
 
-// Task Breakdown Schema (from backend)
+// Task Breakdown Schema (from backend) - UPDATED FOR MULTI-FILE
 export interface TaskBreakdownSchema {
-  tasks: TaskSchema[];
   overview: string;
   total_estimated_time: string;
+  files: FileSchema[];  // Changed from: tasks: TaskSchema[]
   tests?: TestCase[];
 }
 
-// Legacy ParserOutput for compatibility
+// Legacy ParserOutput for compatibility - keeping both formats
 export interface ParserOutput {
-  tasks: TaskSchema[];
+  tasks?: TaskSchema[];  // Legacy format
+  files?: FileSchema[];  // New format
   overview: string;
   total_estimated_time: string;
   tests?: TestCase[];
 }
 
-// Starter Code Schema (from backend)
+// Starter Code Schema (from backend) - UPDATED FOR MULTI-FILE
 export interface StarterCode {
   code_snippet: string;
   instructions: string;
   todos: string[];
   concept_examples?: Record<string, string>;
+  filename: string;  // NEW: which file this task belongs to
 }
 
 // Scaffold Package (adapted from StarterCode for compatibility)

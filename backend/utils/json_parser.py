@@ -98,19 +98,32 @@ def _extract_json_object(text: str) -> dict | None:
 
 
 def validate_task_breakdown(data: dict) -> bool:
-    required_fields = ["overview", "total_estimated_time", "tasks"]
+    """
+    Validate task breakdown structure (UPDATED FOR MULTI-FILE)
+    """
+    required_fields = ["overview", "total_estimated_time", "files"]
     for field in required_fields:
         if field not in data:
             raise ValueError(f"Missing required field: {field}")
-    
-    if not isinstance(data["tasks"], list) or len(data["tasks"]) == 0:
-        raise ValueError("Tasks must be a non-empty list")
-    
-    # Validate each task
-    for task in data["tasks"]:
-        task_fields = ["id", "title", "description", "dependencies", "estimated_time", "concepts"]
-        for field in task_fields:
-            if field not in task:
-                raise ValueError(f"Task missing required field: {field}")
-    
+
+    if not isinstance(data["files"], list) or len(data["files"]) == 0:
+        raise ValueError("Files must be a non-empty list")
+
+    # Validate each file
+    for file_obj in data["files"]:
+        file_fields = ["filename", "purpose", "tasks"]
+        for field in file_fields:
+            if field not in file_obj:
+                raise ValueError(f"File missing required field: {field}")
+
+        if not isinstance(file_obj["tasks"], list) or len(file_obj["tasks"]) == 0:
+            raise ValueError(f"File '{file_obj.get('filename', 'unknown')}' must have a non-empty tasks list")
+
+        # Validate each task within the file
+        for task in file_obj["tasks"]:
+            task_fields = ["id", "title", "description", "dependencies", "estimated_time", "concepts"]
+            for field in task_fields:
+                if field not in task:
+                    raise ValueError(f"Task missing required field: {field}")
+
     return True

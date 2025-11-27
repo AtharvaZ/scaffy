@@ -137,6 +137,7 @@ export function AssignmentInput({
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
+                <option value="csharp">C#</option>
                 <option value="c">C</option>
                 <option value="c++">C++</option>
               </Select>
@@ -159,6 +160,7 @@ export function AssignmentInput({
                 <option value="python">Python</option>
                 <option value="javascript">JavaScript</option>
                 <option value="java">Java</option>
+                <option value="csharp">C#</option>
                 <option value="c++">C++</option>
                 <option value="c">C</option>
                 <option value="typescript">TypeScript</option>

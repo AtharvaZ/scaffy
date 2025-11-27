@@ -23,6 +23,9 @@ class CodeRunner:
             'javascript': 'javascript',
             'js': 'javascript',
             'java': 'java',
+            'csharp': 'csharp',
+            'c#': 'csharp',
+            'cs': 'csharp',
             'c++': 'cpp',
             'c': 'c',
             'typescript': 'typescript'

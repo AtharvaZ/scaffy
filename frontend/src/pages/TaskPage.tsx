@@ -120,8 +120,11 @@ export function TaskPage() {
         setProgressStage("complete");
 
         // Convert TaskBreakdownSchema to ParserOutput format for compatibility
+        // Flatten files structure into tasks array for backward compatibility
+        const allTasks = result.parser_output.files?.flatMap(file => file.tasks) || [];
         const parserOutput = {
-          tasks: result.parser_output.tasks,
+          tasks: allTasks,
+          files: result.parser_output.files,
           overview: result.parser_output.overview,
           total_estimated_time: result.parser_output.total_estimated_time,
           tests: result.parser_output.tests,

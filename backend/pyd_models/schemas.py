@@ -20,6 +20,12 @@ class TaskSchema(BaseModel):
     estimated_time: str
     concepts: List[str]
 
+# NEW: File Schema for multi-file support
+class FileSchema(BaseModel):
+    filename: str
+    purpose: str
+    tasks: List[TaskSchema]
+
 #Test Case Schema
 class TestCase(BaseModel):
     test_name: str  # e.g., "test_empty_input"
@@ -31,9 +37,9 @@ class TestCase(BaseModel):
 
 #Output
 class TaskBreakdownSchema(BaseModel):
-    tasks: List[TaskSchema]
     overview: str
     total_estimated_time: str
+    files: List[FileSchema]  # Changed from: tasks: List[TaskSchema]
     tests: Optional[List[TestCase]] = None
 
 
@@ -46,6 +52,7 @@ class BoilerPlateCodeSchema(BaseModel):
     programming_language: str
     concepts: List[str]
     known_language: Optional[str] = None
+    filename: str  # NEW: which file this task belongs to
 
 #Output
 class StarterCode(BaseModel):
@@ -53,6 +60,7 @@ class StarterCode(BaseModel):
     instructions: str
     todos: List[str]
     concept_examples: Optional[Dict[str, str]] = None
+    filename: str  # NEW: which file this task belongs to
 
 # Input - batch of code generation requests
 class BatchBoilerPlateCodeSchema(BaseModel):

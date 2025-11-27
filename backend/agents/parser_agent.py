@@ -19,13 +19,13 @@ class ParserAgent:
         self.client = get_anthropic_client()
         self.max_retries = 3
 
-    def generate_test_cases(self, assignment_text: str, tasks: list, target_language: str) -> List[TestCase]:
+    def generate_test_cases(self, assignment_text: str, files: list, target_language: str) -> List[TestCase]:
         """
-        Generate test cases based on assignment requirements
+        Generate test cases based on assignment requirements (UPDATED FOR MULTI-FILE)
 
         Args:
             assignment_text: Full assignment description
-            tasks: List of tasks from task breakdown
+            files: List of file structures from task breakdown
             target_language: Programming language (Python, Java, C++, etc.)
 
         Returns:
@@ -34,17 +34,17 @@ class ParserAgent:
         try:
             logger.info("Generating test cases...")
 
-            # Convert tasks to dict if they're TaskSchema objects
-            tasks_list = []
-            for task in tasks:
-                if hasattr(task, 'model_dump'):  # Pydantic v2
-                    tasks_list.append(task.model_dump())
-                elif hasattr(task, 'dict'):  # Pydantic v1
-                    tasks_list.append(task.dict())
+            # Convert files to dict if they're FileSchema objects
+            files_list = []
+            for file_obj in files:
+                if hasattr(file_obj, 'model_dump'):  # Pydantic v2
+                    files_list.append(file_obj.model_dump())
+                elif hasattr(file_obj, 'dict'):  # Pydantic v1
+                    files_list.append(file_obj.dict())
                 else:
-                    tasks_list.append(task)
+                    files_list.append(file_obj)
 
-            prompt = get_test_generation_prompt(assignment_text, tasks_list, target_language)
+            prompt = get_test_generation_prompt(assignment_text, files_list, target_language)
 
             # Try to generate test cases with retries
             for attempt in range(self.max_retries):
@@ -135,7 +135,7 @@ class ParserAgent:
         # Generate test cases
         test_cases = self.generate_test_cases(
             assignment_text=inputData.assignment_text,
-            tasks=task_breakdown_result['tasks'],
+            files=task_breakdown_result['files'],
             target_language=inputData.target_language
         )
 
