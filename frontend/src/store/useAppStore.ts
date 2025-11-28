@@ -247,27 +247,82 @@ export const useAppStore = create<AppStore>()(
       name: 'scaffy-app-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        // User info
         studentCode: state.studentCode,
         studentId: state.studentId,
         assignmentId: state.assignmentId,
+
+        // Assignment details
+        assignmentText: state.assignmentText,
         language: state.language,
         proficientLanguage: state.proficientLanguage,
         experienceLevel: state.experienceLevel,
-        // Removed completedTasks from persistence - tasks won't be saved between sessions
+
+        // Generated content - save the full parser output and scaffold
+        parserOutput: state.parserOutput,
+        scaffold: state.scaffold,
+
+        // Progress tracking
+        currentTask: state.currentTask,
+        completedTasks: Array.from(state.completedTasks), // Convert Set to Array for JSON
+
+        // Test results
+        runnerResult: state.runnerResult,
+
+        // Multi-file support
+        currentFile: state.currentFile,
+        fileSessions: Array.from(state.fileSessions.entries()).map(([filename, session]) => ({
+          filename,
+          code: session.code,
+          completedTodos: Array.from(session.completedTodos), // Convert Set to Array
+          testResults: session.testResults,
+          lastRunResult: session.lastRunResult,
+        })),
+
+        // UI preferences
         isDarkMode: state.isDarkMode,
+
+        // Timestamp for data freshness
+        lastSaved: Date.now(),
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && Array.isArray(state.completedTasks)) {
+        if (!state) return;
+
+        // Convert completedTasks array back to Set
+        if (Array.isArray(state.completedTasks)) {
           state.completedTasks = new Set(state.completedTasks);
-        } else if (state) {
+        } else {
           state.completedTasks = new Set();
         }
+
+        // Convert fileSessions array back to Map
+        if (Array.isArray(state.fileSessions)) {
+          const sessionsMap = new Map<string, FileSession>();
+          state.fileSessions.forEach((session: any) => {
+            sessionsMap.set(session.filename, {
+              ...session,
+              completedTodos: new Set(session.completedTodos || []),
+            });
+          });
+          state.fileSessions = sessionsMap;
+        } else {
+          state.fileSessions = new Map();
+        }
+
         // Apply dark mode on rehydration
-        if (state?.isDarkMode) {
+        if (state.isDarkMode) {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
+
+        console.log('📦 Restored data from localStorage:', {
+          assignmentId: state.assignmentId,
+          language: state.language,
+          tasksCount: state.scaffold?.todo_list?.length || 0,
+          filesCount: state.fileSessions.size,
+          completedTasks: state.completedTasks.size,
+        });
       },
     }
   )

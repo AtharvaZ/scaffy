@@ -132,6 +132,8 @@ export interface CodeEditorProps {
   language: string;
   onChange: (code: string) => void;
   readOnly?: boolean;
+  scrollToTaskIndex?: number;
+  todos?: string[];
 }
 
 export interface RunButtonProps {

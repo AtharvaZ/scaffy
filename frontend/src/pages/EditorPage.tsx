@@ -16,7 +16,8 @@ import { FileSelector } from "../components/FileSelector";
 import { runCode } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
-import { ArrowLeft, Lightbulb, Code2 } from "lucide-react";
+import { ArrowLeft, Lightbulb, Code2, Trash2 } from "lucide-react";
+import { AutoSaveIndicator } from "../components/SaveIndicator";
 
 export function EditorPage() {
   const navigate = useNavigate();
@@ -52,9 +53,11 @@ export function EditorPage() {
     loadFileSession,
     toggleFileSessionTodo,
     updateFileSessionTestResults,
+    reset,
   } = useAppStore();
 
   const [showHelpPanel, setShowHelpPanel] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [helpMode, setHelpMode] = useState<"hint" | "example">("hint");
   const [autoTriggerQuestion, setAutoTriggerQuestion] = useState<
     string | undefined
@@ -270,12 +273,57 @@ export function EditorPage() {
                 </span>
               </Link>
             </div>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
+              <AutoSaveIndicator hasUnsavedChanges={false} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowClearConfirm(true)}
+                className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear Progress
+              </Button>
               <DarkModeToggle />
             </div>
           </div>
         </div>
       </header>
+
+      {/* Clear Progress Confirmation Dialog */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Clear All Progress?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              This will delete all your code, completed tasks, and test results. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowClearConfirm(false)}
+                className="border-gray-200 dark:border-gray-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  reset();
+                  localStorage.removeItem('scaffy-app-storage');
+                  setShowClearConfirm(false);
+                  navigate('/task');
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+              >
+                Clear Everything
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex h-[calc(100vh-80px)] overflow-hidden">
         {/* Main Content Area */}
@@ -330,6 +378,8 @@ export function EditorPage() {
                     initialCode={studentCode}
                     language={language}
                     onChange={handleCodeChange}
+                    scrollToTaskIndex={selectedTaskForExamples}
+                    todos={currentFileTodos}
                   />
                 </div>
 
@@ -361,11 +411,10 @@ export function EditorPage() {
                         onClick={() => {
                           if (showHelpPanel && helpMode === "example") {
                             setShowHelpPanel(false);
-                            setSelectedTaskForExamples(undefined);
                           } else {
                             setHelpMode("example");
                             setShowHelpPanel(true);
-                            // Initialize with first task if not already selected
+                            // Keep the currently selected task, or default to first task
                             if (selectedTaskForExamples === undefined) {
                               setSelectedTaskForExamples(0);
                             }
@@ -440,10 +489,8 @@ export function EditorPage() {
                     completedTasks={currentFileCompletedTasks}
                     selectedTaskForExamples={selectedTaskForExamples}
                     onTaskSelectForExamples={(taskIndex: number) => {
-                      // Only change task selection if example panel is already open
-                      if (showHelpPanel && helpMode === "example") {
-                        setSelectedTaskForExamples(taskIndex);
-                      }
+                      // Set the selected task for examples
+                      setSelectedTaskForExamples(taskIndex);
                     }}
                   />
                 )}

@@ -169,3 +169,18 @@
   }
 }
 
+/* Monaco Editor highlight line animation */
+.highlight-line {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  animation: highlightFade 2s ease-out;
+}
+
+@keyframes highlightFade {
+  0% {
+    background-color: rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    background-color: rgba(59, 130, 246, 0);
+  }
+}
+

@@ -17,8 +17,8 @@ export function TodoList({
     if (isCheckboxClick) {
       // Toggle completion status
       onTaskSelect(index);
-    } else if (onTaskSelectForExamples && selectedTaskForExamples !== undefined) {
-      // Only allow task selection for examples if example panel is open (indicated by selectedTaskForExamples being defined)
+    } else if (onTaskSelectForExamples) {
+      // Select task for examples (will open example panel)
       onTaskSelectForExamples(index);
     }
   };
