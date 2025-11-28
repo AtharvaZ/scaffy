@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import { CodeEditor } from "../components/CodeEditor";
@@ -16,7 +16,7 @@ import { FileSelector } from "../components/FileSelector";
 import { runCode } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
-import { ArrowLeft, Lightbulb, Code2, Trash2 } from "lucide-react";
+import { ArrowLeft, Lightbulb, Code2, Trash2, X } from "lucide-react";
 import { AutoSaveIndicator } from "../components/SaveIndicator";
 
 export function EditorPage() {
@@ -65,6 +65,9 @@ export function EditorPage() {
   const [selectedTaskForExamples, setSelectedTaskForExamples] = useState<number | undefined>(undefined);
   const [lastTestResults, setLastTestResults] = useState<any[] | null>(null);
 
+  // Track previous currentFile to detect changes
+  const prevCurrentFileRef = useRef<string | null>(null);
+
   // Redirect if no scaffold
   useEffect(() => {
     if (!scaffold) {
@@ -81,6 +84,31 @@ export function EditorPage() {
       }
     }
   }, [scaffold, fileSessions.size, initializeFileSessions]);
+
+  // Sync student code with current file session when currentFile changes
+  useEffect(() => {
+    // Only sync when user actively switches files (not on initial mount/localStorage restore)
+    if (currentFile && prevCurrentFileRef.current !== null && prevCurrentFileRef.current !== currentFile) {
+      if (fileSessions.size > 0 && fileSessions.has(currentFile)) {
+        const session = fileSessions.get(currentFile);
+        if (session && session.code) {
+          setStudentCode(session.code);
+        }
+      }
+    }
+    // Always update the ref to track the current file
+    prevCurrentFileRef.current = currentFile;
+  }, [currentFile, fileSessions.size]);
+
+  // Save current file session before page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveCurrentFileSession();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveCurrentFileSession]);
 
   // Get list of files and filter data for current file
   const files = scaffold?.starter_files ? Object.keys(scaffold.starter_files) : [];
@@ -439,11 +467,42 @@ export function EditorPage() {
                     />
                   </div>
 
+                  {/* Compilation Error Section - Show when error exists and all tests have no output */}
+                  {runnerResult && runnerResult.error && runnerResult.test_results && runnerResult.test_results.length > 0 && runnerResult.test_results.every(
+                    test => !test.actual_output || test.actual_output.trim() === ''
+                  ) && (
+                    <div className="mt-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold text-red-900 dark:text-red-100 mb-2">
+                            Compilation Error
+                          </h3>
+                          <p className="text-sm text-red-800 dark:text-red-300 mb-3">
+                            Your code has compilation errors. Fix these before running tests.
+                          </p>
+                          <div className="bg-red-100 dark:bg-red-950/50 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                            <pre className="text-xs font-mono text-red-900 dark:text-red-200 whitespace-pre-wrap overflow-x-auto">
+                              {runnerResult.error}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Test Cases Panel - Shows available test cases BEFORE running OR results AFTER running */}
                   {currentFileTests && currentFileTests.length > 0 && (
-                    <div className="mt-3 h-[400px]">
+                    <div className="mt-3" style={{
+                      height: runnerResult && runnerResult.test_results && runnerResult.test_results.length > 0
+                        ? (runnerResult.test_results.length > 4 ? '400px' : `${runnerResult.test_results.length * 88 + 80}px`)
+                        : '400px'
+                    }}>
                       {runnerResult && runnerResult.test_results && runnerResult.test_results.length > 0 ? (
-                        // Show test results after running
                         <div className="h-full rounded-lg border border-gray-200 dark:border-gray-800">
                           <TestCaseResults
                             testResults={runnerResult.test_results}
@@ -453,7 +512,6 @@ export function EditorPage() {
                           />
                         </div>
                       ) : (
-                        // Show test cases before running - editable
                         <TestCasesPanel
                           testCases={currentFileTests}
                           onTestCasesChange={updateTestCases}

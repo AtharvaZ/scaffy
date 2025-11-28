@@ -260,10 +260,17 @@ IMPORTANT:
 - Start with {{ and end with }}
 - Escape all quotes and backslashes properly
 
-EXAMPLE TODO COMMENT STYLE:
-// TODO: Implement input validation here
-// TODO: Create a loop to process each item
-// TODO: Call the helper function and store the result
+IMPORTANT - USE CORRECT COMMENT SYNTAX FOR EACH LANGUAGE:
+- Python: # TODO: description
+- JavaScript/TypeScript/Java/C++/C#/Go/Rust: // TODO: description
+- HTML: <!-- TODO: description -->
+- CSS: /* TODO: description */
+
+EXAMPLE TODO COMMENT STYLES BY LANGUAGE:
+Python: # TODO: Implement input validation here
+JavaScript/C++/Java/C#: // TODO: Implement input validation here
+HTML: <!-- TODO: Implement input validation here -->
+CSS: /* TODO: Implement input validation here */
 
 CRITICAL RESPONSE FORMAT:
 - Response must be ONLY valid JSON
