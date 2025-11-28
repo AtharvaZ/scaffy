@@ -1,9 +1,9 @@
-# Scaffy
+# Scaffi
 
 **Stop staring at assignment specs. Start coding in just a few seconds.**
 
 No more "Where do I even start!!!???" Just focused work and actual learning.
-Scaffy breaks down programming assignments into clear, manageable tasks—
+Scaffi breaks down programming assignments into clear, manageable tasks—
 with 
 - *Starter code with TODOs*
 - *Concept-specific examples*
@@ -46,7 +46,7 @@ with
 ## 📁 Project Structure
 
 ```
-Scaffy_frontend/
+Scaffi_frontend/
 ├── backend/                 # Python FastAPI backend
 │   ├── agents/             # AI agents for different tasks
 │   │   ├── parser_agent.py         # Breaks down assignments
@@ -97,7 +97,7 @@ Scaffy_frontend/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd Scaffy_frontend
+   cd Scaffi_frontend
    ```
 
 2. **Set up the backend**
