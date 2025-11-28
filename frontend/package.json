@@ -13,6 +13,7 @@
     "canvas-confetti": "^1.9.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.400.0",
     "ogl": "^1.0.11",
     "postprocessing": "^6.37.8",

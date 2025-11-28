@@ -46,6 +46,7 @@ export async function generateStarterCodeBatch(
     programming_language: string;
     concepts: string[];
     known_language?: string;
+    experience_level?: string;
     filename: string;  // NEW: required for multi-file support
   }>
 ): Promise<{
@@ -170,6 +171,7 @@ export async function parseAndScaffold(
     programming_language: targetLanguage,
     concepts: task.concepts,
     known_language: knownLanguage || undefined,
+    experience_level: experienceLevel,
     filename: filename,
   }));
 

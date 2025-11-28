@@ -30,7 +30,8 @@ class CodegenAgent:
                 'task_description': task.task_description,
                 'programming_language': task.programming_language,
                 'concepts': task.concepts,
-                'known_language': task.known_language
+                'known_language': task.known_language,
+                'experience_level': task.experience_level
             }
             # Add filename if it exists
             if hasattr(task, 'filename'):

@@ -27,10 +27,11 @@ Target Language: {target_language}
 
 Your task is to:
 1. Analyze the assignment to identify functions/methods that need testing
-2. Generate 3-7 test cases covering normal, edge, and error scenarios
+2. Generate 5-15 test cases covering normal, edge, and error scenarios
 3. Infer function signatures from the assignment description
 4. Create realistic input/output pairs
 5. Ensure tests are appropriate for the target language
+6. If needed, add tests for each task or for each function within tasks so students can test a single function at a time.
 
 TEST CASE DISTRIBUTION:
 - 60% normal cases (typical usage)
@@ -193,6 +194,7 @@ def get_batch_codegen_prompt(tasks_data: list) -> str:
         known_lang = task.get('known_language')
         known_lang_note = f" (Student knows {known_lang})" if known_lang else ""
         filename = task.get('filename', 'unknown.py')
+        exp_level = task.get('experience_level', 'intermediate')
 
         tasks_description += f"""
 === TASK {i} ===
@@ -200,6 +202,7 @@ Filename: {filename}
 Description: {task['task_description']}
 Language: {task['programming_language']}
 Concepts: {concepts_str}{known_lang_note}
+Experience Level: {exp_level}
 
 """
 
@@ -218,6 +221,11 @@ CRITICAL RULES FOR ALL TASKS:
 6. Do NOT generate concept examples - they are generated on-demand when requested
 7. Always set concept_examples to null
 8. Each task belongs to a specific file - include the filename in the response
+
+EXPERIENCE LEVEL GUIDANCE:
+- For BEGINNER students: Include more detailed TODO comments with step-by-step guidance, add helpful code structure hints, and provide more descriptive variable names. BUT NOT THE FULL SOLUTION or CODE IMPLEMENTATIONS.
+- For INTERMEDIATE students: Provide clear but concise TODO comments, balanced code structure with moderate guidance
+- For ADVANCED students: Minimal TODO comments with high-level guidance only, let them figure out the implementation details, provide minimal scaffolding
 
 Return ONLY a valid JSON object with this EXACT structure:
 {{

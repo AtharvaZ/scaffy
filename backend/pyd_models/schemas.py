@@ -52,6 +52,7 @@ class BoilerPlateCodeSchema(BaseModel):
     programming_language: str
     concepts: List[str]
     known_language: Optional[str] = None
+    experience_level: Optional[str] = None
     filename: str  # NEW: which file this task belongs to
 
 #Output

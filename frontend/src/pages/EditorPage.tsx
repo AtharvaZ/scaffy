@@ -309,6 +309,15 @@ export function EditorPage() {
                   const session = fileSessions.get(filename);
                   return session ? session.code !== (scaffold?.starter_files?.[filename] || '') : false;
                 }}
+                fileContents={(() => {
+                  const contents: Record<string, string> = {};
+                  files.forEach(filename => {
+                    const session = fileSessions.get(filename);
+                    contents[filename] = session?.code || scaffold?.starter_files?.[filename] || '';
+                  });
+                  return contents;
+                })()}
+                originalStarterFiles={scaffold?.starter_files}
               />
             )}
 
