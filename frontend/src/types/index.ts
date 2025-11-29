@@ -8,6 +8,7 @@ export interface TaskSchema {
   dependencies: number[];
   estimated_time: string;
   concepts: string[];
+  template_variables?: string[];  // Variable names from template to preserve
 }
 
 // Class Schema for multi-class files
@@ -36,10 +37,19 @@ export interface TestCase {
   test_type: "normal" | "edge" | "error";
 }
 
+// Template Structure Schema (from backend)
+export interface TemplateStructure {
+  has_template: boolean;
+  variable_names: string[];
+  class_names: string[];
+  method_signatures?: string[];
+}
+
 // Task Breakdown Schema (from backend) - UPDATED FOR MULTI-FILE
 export interface TaskBreakdownSchema {
   overview: string;
   total_estimated_time: string;
+  template_structure?: TemplateStructure;  // Global template info
   files: FileSchema[];  // Changed from: tasks: TaskSchema[]
   // tests are now per-file (in FileSchema.tests), not at top level
 }
@@ -50,6 +60,7 @@ export interface ParserOutput {
   files?: FileSchema[];  // New format
   overview: string;
   total_estimated_time: string;
+  template_structure?: TemplateStructure;  // Template info
   tests?: TestCase[];
 }
 

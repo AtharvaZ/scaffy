@@ -576,9 +576,11 @@ def get_file_codegen_prompt(tasks_data: list, filename: str,
     # Determine language and comment style
     language = tasks_data[0].get('programming_language', 'python').lower()
 
-    if language in ['python']:
+    # Languages that use # for comments (Python, Shell scripts, etc.)
+    if language in ['python', 'bash', 'shell', 'ruby', 'perl', 'yaml', 'toml']:
         comment_style = '#'
         comment_example = '# TODO: Implement this'
+    # C/C++ and Makefile use // for code comments (even in Makefile context, the C code uses //)
     else:
         comment_style = '//'
         comment_example = '// TODO: Implement this'
@@ -723,11 +725,95 @@ namespace App {{ class Program {{ }} }}  ← DUPLICATE CLASS! COMPILATION ERROR!
 Generate ONE complete, compilable {filename} with ALL tasks integrated into ONE class.
 """
 
-    return f"""Generate scaffolding for ONE complete file in a programming assignment.
+    requirement_extraction_guidance = """
+CRITICAL - REQUIREMENT EXTRACTION FROM ASSIGNMENT:
+
+Before generating code, carefully read the task descriptions for:
+
+1. EXACT NAMING REQUIREMENTS:
+   - Look for phrases: "MUST name", "you MUST call", "name it exactly"
+   - Look for quoted names: "Producer-1", "thread-worker-01"
+   - Preserve: capitalization, punctuation (dashes, underscores), numbering style
+   - Example: If task says 'name threads "Producer-1"' → use "Producer-%d" with i+1
+
+2. REQUIRED PRIMITIVES/LIBRARIES:
+   - Look for: "use X", "implement using Y", "with Z library"
+   - Do NOT substitute similar alternatives
+   - Example: "implement with semaphores" → use semaphores (not mutex, not locks)
+   - Example: "use OrderedDict" → use OrderedDict (not regular dict)
+
+3. EXACT OUTPUT FORMATS:
+   - Look for example outputs in quotes or brackets
+   - Example: "[Producer-1] has produced item 5" → preserve brackets, exact wording
+   - Include complete format string in TODO comments for students
+   - Show example with variable names: printk(KERN_INFO "[Producer-%d] has produced...", id, ...)
+
+4. DATA STRUCTURE IMPLICATIONS:
+   - Parameters like "number of X" → create array/list to hold 0-N items
+   - Example: "prod: number of producers" → need producer array, not single variable
+   - Example: "size: buffer size" → need buffer of that size
+   - Don't assume quantity=1 when parameter allows variable quantity
+
+5. REQUIRED REGISTRATIONS/BOILERPLATE:
+   - Look for "module must", "you must register", "required macros"
+   - Include these even if TODO, so students know they're required
+   - Example: kernel modules need module_init/module_exit
+   - Example: Flask apps need app.run()
+
+6. COMPLIANCE KEYWORDS:
+   - "MUST", "REQUIRED", "exactly", "specifically" → follow literally
+   - "may", "can", "optional" → include as TODO for flexibility
+   - "do NOT", "never", "avoid" → add warning in comments
+
+EXTRACTION PROCESS:
+1. Read ALL task descriptions first
+2. Extract explicit requirements (MUST, exact names, specific libraries)
+3. Infer structural requirements (arrays for "number of X" parameters)
+4. Include extracted requirements in relevant TODO comments
+5. Don't add requirements that aren't mentioned
+
+REQUIREMENT EXTRACTION EXAMPLES:
+
+Example 1 - Exact Naming:
+Task: "Create threads named 'Worker-1', 'Worker-2', etc."
+Extraction: Must use "Worker-%d" format with 1-based indexing
+Action: Include in TODO: "Name threads 'Worker-1', 'Worker-2' using format string"
+
+Example 2 - Required Primitive:
+Task: "Implement synchronization using semaphores"
+Extraction: Must use semaphore library/primitives, not alternatives
+Action: Declare semaphore variables, use down()/up() operations
+
+Example 3 - Output Format:
+Task: "Log messages like: [Thread-5] Processing item 42"
+Extraction: Exact format with brackets, "Processing item", variable positions
+Action: TODO comment shows: printk(KERN_INFO "[Thread-%d] Processing item %d", id, item)
+
+Example 4 - Data Structure:
+Task: "Parameter 'workers' specifies number of worker threads"
+Extraction: Need array to hold 0-N threads, not single thread variable
+Action: Declare: struct task_struct **worker_threads;
+
+Example 5 - What NOT to extract:
+Task: "Implement a producer-consumer pattern"
+Extraction: No specific requirements, just the pattern
+Action: Use reasonable defaults, let student make choices
+"""
+
+    return f"""Generate SCAFFOLDING CODE (starter code with TODOs) for ONE file in a programming assignment.
+
+CRITICAL - SCAFFOLDING NOT SOLUTIONS:
+⚠️  DO NOT write complete implementations
+⚠️  DO NOT solve the problems for students
+✓  Provide structure: class definitions, method signatures, variable declarations
+✓  Use TODO comments to mark where students should write code
+✓  Show the skeleton/framework, students fill in the logic
 
 FILE: {filename}
 LANGUAGE: {language}
 NUMBER OF TASKS: {len(tasks_data)}
+
+{requirement_extraction_guidance}
 
 {structure_guidance}
 
@@ -786,6 +872,35 @@ For EACH task, generate appropriate number of TODOs based on experience level:
   * Example: "TODO: Implement the main algorithm", "TODO: Handle edge cases"
 
 CRITICAL: Adjust TODO count per task based on experience_level field!
+
+REMINDER - WHAT TO INCLUDE IN code_snippet:
+✓  Variable declarations (but NOT initialized with actual values students should compute)
+✓  Function/method signatures (with parameter types and return types)
+✓  Class structure and inheritance
+✓  Import/include statements
+✓  TODO comments marking where logic goes
+✓  Empty method bodies or simple return statements (return 0, return null, etc.)
+✗  DO NOT include actual algorithm implementations
+✗  DO NOT include complete logic (loops, conditionals with actual logic)
+✗  DO NOT solve the problems - leave that for students
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BEFORE GENERATING - REQUIREMENT VERIFICATION CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STOP AND VERIFY YOU HAVE:
+□ Read ALL task descriptions carefully for explicit requirements
+□ Identified any MUST/REQUIRED/exactly keywords and followed them literally
+□ Checked for quoted names or formats that must be preserved exactly
+□ Identified required libraries/primitives (not substituted alternatives)
+□ Created appropriate data structures for variable quantities (arrays for "number of X")
+□ Included required boilerplate/registrations mentioned in tasks
+□ Added requirement details to TODO comments where applicable
+□ Used exact variable names from template (if template_variables provided)
+□ Only added requirements that ARE mentioned (not assumed)
+
+If assignment doesn't specify something → you have freedom to choose reasonable defaults
+If assignment DOES specify something → you MUST follow it exactly
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL JSON RESPONSE FORMAT - READ CAREFULLY

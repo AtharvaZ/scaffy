@@ -35,9 +35,11 @@ def extract_json_from_response(response_text: str) -> dict:
         return json_obj
     
     # Last resort: try to find any valid JSON in the response
-    # Look for patterns like { ... } with proper nesting
+    # IMPORTANT: Try from the BEGINNING first to get outermost object
+    # This prevents extracting inner objects when the response is truncated
     start_positions = [i for i, char in enumerate(response_text) if char == '{']
-    
+
+    # Prioritize the first '{' (outermost object)
     for start in start_positions:
         # Try to find the matching closing brace
         brace_count = 0

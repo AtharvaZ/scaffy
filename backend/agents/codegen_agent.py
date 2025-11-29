@@ -68,10 +68,11 @@ class CodegenAgent:
             try:
                 logger.info(f"File codegen for {filename}, attempt {attempt + 1}/{self.max_retries}")
 
-                # Estimate tokens for this file
-                # Increase token budget for complex multi-class files
-                estimated_tokens = len(tasks) * 500
-                max_tokens = min(estimated_tokens + 1500, 8000)
+                # Set high token budget for complete code generation
+                # Use fixed 16000 tokens to avoid truncation issues
+                max_tokens = 16000
+
+                logger.info(f"Using {max_tokens} max tokens for {len(tasks)} tasks in {filename}")
 
                 response_text = self.client.generate_response(prompt, max_tokens=max_tokens)
 
@@ -93,12 +94,19 @@ class CodegenAgent:
                 logger.info(f"Parsed JSON keys: {list(data.keys())}")
                 logger.info(f"Data type: {type(data)}")
 
+                # Check if response was truncated by looking at the end
+                if not response_text.strip().endswith('}'):
+                    logger.warning(f"Response appears truncated (doesn't end with }}). Length: {len(response_text)}")
+                    logger.warning(f"Last 100 chars: {response_text[-100:]}")
+                    raise ValueError(f"Response truncated at {len(response_text)} chars. Need more tokens.")
+
                 # Validate response - handle both correct format and single task fallback
                 if "tasks" not in data:
                     # Check if we got a single task object instead of wrapper
                     if "task_number" in data and "code_snippet" in data:
-                        logger.warning(f"Got single task object, wrapping in 'tasks' array")
-                        data = {"tasks": [data]}
+                        logger.warning(f"Got single task object instead of wrapper")
+                        logger.warning(f"Response likely truncated - outermost }} missing")
+                        raise ValueError(f"Response incomplete: got single task object, expected {{\"tasks\": [...]}} wrapper with {len(tasks)} tasks")
                     else:
                         logger.error(f"Response missing 'tasks' field. Got keys: {list(data.keys())}")
                         logger.error(f"Full parsed data: {data}")

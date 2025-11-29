@@ -135,20 +135,40 @@ export async function parseAndScaffold(
     experienceLevel
   );
 
-  // Extract all tasks from files structure
-  const allTasksWithFiles: Array<{task: TaskSchema, filename: string}> = [];
+  // Extract global template variables from template_structure (for entire assignment)
+  const globalTemplateVariables = taskBreakdown.template_structure?.variable_names || [];
+
+  // Extract all tasks from files structure with class and template info
+  const allTasksWithFiles: Array<{
+    task: TaskSchema,
+    filename: string,
+    className?: string,
+    templateVariables?: string[]
+  }> = [];
+
   if (taskBreakdown.files) {
     // New format with files
     for (const file of taskBreakdown.files) {
       // Handle both simple files (with tasks) and multi-class files (with classes)
       if (file.tasks) {
         for (const task of file.tasks) {
-          allTasksWithFiles.push({ task, filename: file.filename });
+          allTasksWithFiles.push({
+            task,
+            filename: file.filename,
+            // Use task-specific template vars if present, otherwise use global ones
+            templateVariables: task.template_variables || (globalTemplateVariables.length > 0 ? globalTemplateVariables : undefined)
+          });
         }
       } else if (file.classes) {
         for (const classObj of file.classes) {
           for (const task of classObj.tasks) {
-            allTasksWithFiles.push({ task, filename: file.filename });
+            allTasksWithFiles.push({
+              task,
+              filename: file.filename,
+              className: classObj.class_name,  // Track which class this task belongs to
+              // Use task-specific template vars if present, otherwise use global ones
+              templateVariables: task.template_variables || (globalTemplateVariables.length > 0 ? globalTemplateVariables : undefined)
+            });
           }
         }
       }
@@ -174,14 +194,16 @@ export async function parseAndScaffold(
     }
   }
 
-  // Build batch request with filename
-  const batchRequest = allTasksWithFiles.map(({ task, filename }) => ({
+  // Build batch request with filename, class_name, and template_variables
+  const batchRequest = allTasksWithFiles.map(({ task, filename, className, templateVariables }) => ({
     task_description: task.description,
     programming_language: targetLanguage,
     concepts: task.concepts,
     known_language: knownLanguage || undefined,
     experience_level: experienceLevel,
     filename: filename,
+    class_name: className || undefined,  // Pass class name if present
+    template_variables: templateVariables || undefined  // Pass template vars if present
   }));
 
   // Simulate smooth progress during batch generation
