@@ -345,14 +345,13 @@ export function EditorPage() {
                 Cancel
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={() => {
                   reset();
                   localStorage.removeItem('scaffy-app-storage');
                   setShowClearConfirm(false);
                   navigate('/task');
                 }}
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               >
                 Clear Everything
               </Button>
