@@ -16,47 +16,46 @@ logger = logging.getLogger(__name__)
 class ParserAgent:
 
     def __init__(self):
-        self.client = get_anthropic_client()
+        # Use Haiku for parser - fast and cost-effective for structured output
+        self.client = get_anthropic_client(model="claude-3-5-haiku-20241022")
         self.max_retries = 3
 
-    def generate_test_cases(self, assignment_text: str, files: list, target_language: str) -> List[TestCase]:
+    def generate_test_cases_for_file(self, assignment_text: str, file_data: dict, target_language: str) -> List[TestCase]:
         """
-        Generate test cases based on assignment requirements (UPDATED FOR MULTI-FILE)
+        Generate test cases for a SINGLE file (PER-FILE GENERATION)
 
         Args:
-            assignment_text: Full assignment description
-            files: List of file structures from task breakdown
+            assignment_text: Full assignment description for context
+            file_data: Single file structure (dict with filename, purpose, tasks/classes)
             target_language: Programming language (Python, Java, C++, etc.)
 
         Returns:
-            List of TestCase objects, or empty list if generation fails
+            List of TestCase objects for this file, or empty list if generation fails
         """
         try:
+            filename = file_data.get('filename', 'unknown')
             logger.info("=" * 80)
-            logger.info("STARTING TEST GENERATION")
+            logger.info(f"STARTING TEST GENERATION FOR FILE: {filename}")
             logger.info(f"Target Language: {target_language}")
-            logger.info(f"Number of files: {len(files)}")
             logger.info("=" * 80)
 
-            # Convert files to dict if they're FileSchema objects
-            files_list = []
-            for file_obj in files:
-                if hasattr(file_obj, 'model_dump'):  # Pydantic v2
-                    files_list.append(file_obj.model_dump())
-                elif hasattr(file_obj, 'dict'):  # Pydantic v1
-                    files_list.append(file_obj.dict())
-                else:
-                    files_list.append(file_obj)
+            # Convert file_data to dict if it's a FileSchema object
+            if hasattr(file_data, 'model_dump'):  # Pydantic v2
+                file_dict = file_data.model_dump()
+            elif hasattr(file_data, 'dict'):  # Pydantic v1
+                file_dict = file_data.dict()
+            else:
+                file_dict = file_data
 
-            prompt = get_test_generation_prompt(assignment_text, files_list, target_language)
+            prompt = get_test_generation_prompt(assignment_text, [file_dict], target_language)
 
             # Try to generate test cases with retries
             for attempt in range(self.max_retries):
                 try:
-                    logger.info(f"Test generation attempt {attempt + 1}/{self.max_retries}")
+                    logger.info(f"Test generation for {filename}: attempt {attempt + 1}/{self.max_retries}")
                     response_text = self.client.generate_response(prompt, max_tokens=2500)
 
-                    logger.info(f"Received response from AI (length: {len(response_text)} chars)")
+                    logger.info(f"Received response from AI for {filename} (length: {len(response_text)} chars)")
                     logger.debug(f"Response preview: {response_text[:500]}")
 
                     # Extract JSON array from response
@@ -81,26 +80,26 @@ class ParserAgent:
                             continue
 
                     logger.info("=" * 80)
-                    logger.info(f"✓ Successfully generated {len(test_cases)} test cases")
+                    logger.info(f"✓ Successfully generated {len(test_cases)} test cases for {filename}")
                     logger.info("=" * 80)
                     return test_cases
 
                 except (ValueError, KeyError, json.JSONDecodeError) as e:
-                    logger.warning(f"Test generation attempt {attempt + 1} failed: {str(e)}")
+                    logger.warning(f"Test generation for {filename} attempt {attempt + 1} failed: {str(e)}")
 
                     if attempt < self.max_retries - 1:
                         prompt += f"\n\nIMPORTANT: Previous attempt failed. Ensure your response is ONLY a valid JSON array starting with [ and ending with ]."
                     continue
 
             logger.error("=" * 80)
-            logger.error("✗ FAILED to generate test cases after all retries")
+            logger.error(f"✗ FAILED to generate test cases for {filename} after all retries")
             logger.error("Returning empty list")
             logger.error("=" * 80)
             return []
 
         except Exception as e:
             logger.error("=" * 80)
-            logger.error(f"✗ UNEXPECTED ERROR generating test cases: {str(e)}")
+            logger.error(f"✗ UNEXPECTED ERROR generating test cases for {filename}: {str(e)}")
             logger.error("Returning empty list")
             logger.error("=" * 80)
             return []  # Return empty list instead of crashing
@@ -158,20 +157,26 @@ class ParserAgent:
             logger.error(f"All {self.max_retries} attempts failed")
             raise ValueError(f"Failed to parse assignment after {self.max_retries} attempts: {str(last_error)}")
 
-        # Generate test cases
-        files_for_tests = task_breakdown_result.get('files', [])
-        if files_for_tests:
-            test_cases = self.generate_test_cases(
-                assignment_text=inputData.assignment_text,
-                files=files_for_tests,
-                target_language=inputData.target_language
-            )
+        # Generate test cases PER-FILE (similar to how codegen works per-file)
+        files_list = task_breakdown_result.get('files', [])
+        if files_list:
+            logger.info(f"Generating tests for {len(files_list)} files")
+            for file_data in files_list:
+                filename = file_data.get('filename', 'unknown')
+                logger.info(f"Generating tests for file: {filename}")
+
+                # Generate tests for this specific file
+                test_cases = self.generate_test_cases_for_file(
+                    assignment_text=inputData.assignment_text,
+                    file_data=file_data,
+                    target_language=inputData.target_language
+                )
+
+                # Add tests to this file's data
+                file_data['tests'] = test_cases
+                logger.info(f"Added {len(test_cases)} tests to {filename}")
         else:
             logger.warning("No files found for test generation, skipping")
-            test_cases = []
-
-        # Add tests to the result
-        task_breakdown_result['tests'] = test_cases
 
         return TaskBreakdownSchema(**task_breakdown_result)
 

@@ -15,7 +15,8 @@ class ConceptExampleAgent:
     """Agent responsible for generating on-demand concept examples"""
     
     def __init__(self):
-        self.client = get_anthropic_client()
+        # Use Haiku for concept examples - fast and cost-effective for educational examples
+        self.client = get_anthropic_client(model="claude-3-5-haiku-20241022")
         self.max_retries = 3
     
     def generate_example(self, request: ConceptExampleRequest) -> ConceptExampleResponse:

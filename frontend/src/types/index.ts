@@ -10,11 +10,20 @@ export interface TaskSchema {
   concepts: string[];
 }
 
-// NEW: File Schema for multi-file support
+// Class Schema for multi-class files
+export interface ClassSchema {
+  class_name: string;
+  purpose: string;
+  tasks: TaskSchema[];
+}
+
+// NEW: File Schema for multi-file support (updated for multi-class and per-file tests)
 export interface FileSchema {
   filename: string;
   purpose: string;
-  tasks: TaskSchema[];
+  tasks?: TaskSchema[] | null;  // For simple files
+  classes?: ClassSchema[] | null;  // For multi-class files
+  tests?: TestCase[] | null;  // Per-file test cases
 }
 
 // Test Case Schema (from backend)
@@ -32,7 +41,7 @@ export interface TaskBreakdownSchema {
   overview: string;
   total_estimated_time: string;
   files: FileSchema[];  // Changed from: tasks: TaskSchema[]
-  tests?: TestCase[];
+  // tests are now per-file (in FileSchema.tests), not at top level
 }
 
 // Legacy ParserOutput for compatibility - keeping both formats

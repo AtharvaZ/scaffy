@@ -5,15 +5,26 @@ Clean, focused prompts for each agent's specific task
 
 def get_test_generation_prompt(assignment_text: str, files: list, target_language: str) -> str:
     """
-    Generate test cases based on assignment requirements (UPDATED FOR MULTI-FILE)
+    Generate test cases based on assignment requirements (UPDATED FOR MULTI-FILE AND MULTI-CLASS)
     """
     # Build tasks summary from file structure
     tasks_summary = ""
     for file_data in files:
         filename = file_data.get('filename', 'unknown')
         tasks_summary += f"\n=== File: {filename} ===\n"
-        for task in file_data.get('tasks', []):
-            tasks_summary += f"Task {task.get('id', '')}: {task.get('title', '')} - {task.get('description', '')}\n"
+
+        # Handle simple file structure (tasks directly in file)
+        if file_data.get('tasks') is not None:
+            for task in file_data.get('tasks', []):
+                tasks_summary += f"Task {task.get('id', '')}: {task.get('title', '')} - {task.get('description', '')}\n"
+
+        # Handle multi-class file structure (classes with tasks)
+        elif file_data.get('classes') is not None:
+            for class_obj in file_data.get('classes', []):
+                class_name = class_obj.get('class_name', 'Unknown')
+                tasks_summary += f"\nClass: {class_name}\n"
+                for task in class_obj.get('tasks', []):
+                    tasks_summary += f"Task {task.get('id', '')}: {task.get('title', '')} - {task.get('description', '')}\n"
 
     return f"""You are a test case generator for programming assignments. Your task is to generate comprehensive test cases.
 

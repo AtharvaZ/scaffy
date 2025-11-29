@@ -140,8 +140,17 @@ export async function parseAndScaffold(
   if (taskBreakdown.files) {
     // New format with files
     for (const file of taskBreakdown.files) {
-      for (const task of file.tasks) {
-        allTasksWithFiles.push({ task, filename: file.filename });
+      // Handle both simple files (with tasks) and multi-class files (with classes)
+      if (file.tasks) {
+        for (const task of file.tasks) {
+          allTasksWithFiles.push({ task, filename: file.filename });
+        }
+      } else if (file.classes) {
+        for (const classObj of file.classes) {
+          for (const task of classObj.tasks) {
+            allTasksWithFiles.push({ task, filename: file.filename });
+          }
+        }
       }
     }
   } else if (taskBreakdown.tasks) {
@@ -293,11 +302,12 @@ export async function parseAndScaffold(
       overview: taskBreakdown.overview,
       total_estimated_time: taskBreakdown.total_estimated_time,
       files: taskBreakdown.files || [],
-      tests: taskBreakdown.tests,
+      // tests are now per-file (in files[].tests), not at top level
     };
 
-    // Debug: Check if tests were generated
-    if (!taskBreakdown.tests || taskBreakdown.tests.length === 0) {
+    // Debug: Check if tests were generated (now per-file)
+    const totalTests = parserOutput.files.reduce((sum, file) => sum + (file.tests?.length || 0), 0);
+    if (totalTests === 0) {
       console.warn("⚠️ No test cases were generated for this assignment");
       console.warn("This may be due to:");
       console.warn("  - API rate limiting");
@@ -305,7 +315,7 @@ export async function parseAndScaffold(
       console.warn("  - Assignment not having testable functions");
       console.warn("Check backend logs for more details");
     } else {
-      console.log(`✓ Generated ${taskBreakdown.tests.length} test cases`);
+      console.log(`✓ Generated ${totalTests} test cases across ${parserOutput.files.length} file(s)`);
     }
 
     return {

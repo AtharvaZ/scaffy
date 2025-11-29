@@ -124,13 +124,26 @@ export function EditorPage() {
     for (const file of parserOutput.files) {
       if (file.filename === currentFile) {
         // Found our file - add all its task indices
-        for (let i = 0; i < file.tasks.length; i++) {
+        // Handle both simple files (tasks) and multi-class files (classes)
+        let taskCount = 0;
+        if (file.tasks) {
+          taskCount = file.tasks.length;
+        } else if (file.classes) {
+          taskCount = file.classes.reduce((sum, c) => sum + c.tasks.length, 0);
+        }
+        for (let i = 0; i < taskCount; i++) {
           taskIndices.push(globalTaskIndex + i);
         }
         break;
       }
       // Not our file - skip its tasks
-      globalTaskIndex += file.tasks.length;
+      let fileTaskCount = 0;
+      if (file.tasks) {
+        fileTaskCount = file.tasks.length;
+      } else if (file.classes) {
+        fileTaskCount = file.classes.reduce((sum, c) => sum + c.tasks.length, 0);
+      }
+      globalTaskIndex += fileTaskCount;
     }
 
     return taskIndices;
@@ -164,25 +177,20 @@ export function EditorPage() {
     return localCompleted;
   })();
 
-  // Filter test cases for current file
+  // Get test cases for current file (tests are now per-file)
   const currentFileTests = (() => {
-    if (!hasMultipleFiles || !parserOutput?.tests || !currentFile) {
-      return parserOutput?.tests || [];
+    // For single-file assignments, look for tests in the first file
+    if (!hasMultipleFiles && parserOutput?.files?.[0]?.tests) {
+      return parserOutput.files[0].tests;
     }
 
-    // Filter tests that belong to functions in the current file
-    // We'll use a simple heuristic: if the test references a function that's in this file's tasks
-    const currentFileTasks = getCurrentFileTasks();
-    const currentFileTaskTitles = currentFileTasks.map(idx =>
-      scaffold?.todo_list[idx] || ''
-    );
+    // For multi-file assignments, get tests from current file
+    if (hasMultipleFiles && parserOutput?.files && currentFile) {
+      const fileData = parserOutput.files.find(f => f.filename === currentFile);
+      return fileData?.tests || [];
+    }
 
-    return parserOutput.tests.filter(test => {
-      // Check if test function name appears in any of the current file's task titles
-      return currentFileTaskTitles.some(title =>
-        title.toLowerCase().includes(test.function_name.toLowerCase())
-      );
-    });
+    return [];
   })();
 
   // Handle file switching

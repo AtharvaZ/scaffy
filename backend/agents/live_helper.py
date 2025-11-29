@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 class LiveHelperAgent:
     
     def __init__(self):
-        self.client = get_anthropic_client()
+        # Use Sonnet 4 for hints - best for nuanced educational guidance
+        self.client = get_anthropic_client(model="claude-sonnet-4-20250514")
         self.max_retries = 3
 
     def provide_hint(self, inputData: HintResponseSchema) -> HintSchema:

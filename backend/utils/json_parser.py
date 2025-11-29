@@ -148,6 +148,12 @@ def validate_task_breakdown(data: dict) -> bool:
                     if field not in task:
                         raise ValueError(f"Task in '{filename}' missing required field: {field}")
 
+        # Validate tests if present (tests are now per-file)
+        if "tests" in file_obj and file_obj["tests"] is not None:
+            if not isinstance(file_obj["tests"], list):
+                raise ValueError(f"File '{filename}' tests must be a list")
+            logger.info(f"File '{filename}' has {len(file_obj['tests'])} tests")
+
         # Validate multi-class file structure (classes with tasks)
         if has_classes:
             if not isinstance(file_obj["classes"], list) or len(file_obj["classes"]) == 0:

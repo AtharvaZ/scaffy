@@ -40,6 +40,7 @@ class FileSchema(BaseModel):
     purpose: str
     tasks: Optional[List[TaskSchema]] = None  # For simple files
     classes: Optional[List[ClassSchema]] = None  # For multi-class files
+    tests: Optional[List['TestCase']] = None  # Per-file test cases
 
 #Test Case Schema
 class TestCase(BaseModel):
@@ -56,7 +57,6 @@ class TaskBreakdownSchema(BaseModel):
     total_estimated_time: str
     template_structure: Optional[TemplateStructure] = None  # NEW: template info
     files: List[FileSchema]  # Changed from: tasks: List[TaskSchema]
-    tests: Optional[List[TestCase]] = None
 
 
 
