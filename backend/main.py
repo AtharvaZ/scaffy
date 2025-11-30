@@ -43,7 +43,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://scaffi-front.onrender.com",  # Your frontend URL (update after deploy)
+        "http://localhost:5173",  # Local dev
+        "http://localhost:3000" ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
