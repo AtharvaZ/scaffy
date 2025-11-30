@@ -102,9 +102,58 @@ export const useAppStore = create<AppStore>()(
       setProficientLanguage: (language) => set({ proficientLanguage: language }),
       setExperienceLevel: (level) => set({ experienceLevel: level }),
       setParserOutput: (output) => set({ parserOutput: output }),
-      updateTestCases: (testCases) => set((state) => ({
-        parserOutput: state.parserOutput ? { ...state.parserOutput, tests: testCases } : null
-      })),
+      updateTestCases: (testCases) => set((state) => {
+        console.log("📝 updateTestCases called in store");
+        console.log("  - Incoming testCases:", testCases);
+        console.log("  - Current file:", state.currentFile);
+        console.log("  - parserOutput exists:", !!state.parserOutput);
+
+        if (!state.parserOutput) {
+          console.error("❌ No parserOutput in state");
+          return {};
+        }
+
+        // Handle multi-file structure (tests are per-file)
+        if (state.parserOutput.files && state.parserOutput.files.length > 0) {
+          console.log(`  - Multi-file mode: ${state.parserOutput.files.length} files`);
+          console.log(`  - Files:`, state.parserOutput.files.map(f => f.filename));
+
+          const updatedFiles = state.parserOutput.files.map(file => {
+            // Update tests for current file
+            if (file.filename === state.currentFile) {
+              console.log(`  ✅ Matched current file: ${file.filename}`);
+              console.log(`     Old tests: ${file.tests?.length || 0}, New tests: ${testCases.length}`);
+              return { ...file, tests: testCases };
+            }
+            // For single-file assignments (only one file in array)
+            if (state.parserOutput!.files!.length === 1) {
+              console.log(`  ✅ Single file assignment, updating: ${file.filename}`);
+              console.log(`     Old tests: ${file.tests?.length || 0}, New tests: ${testCases.length}`);
+              return { ...file, tests: testCases };
+            }
+            console.log(`  ⏭️  Skipping file: ${file.filename}`);
+            return file;
+          });
+
+          console.log("  - Updated files structure:", updatedFiles.map(f => ({ filename: f.filename, tests: f.tests?.length })));
+
+          const newState = {
+            parserOutput: {
+              ...state.parserOutput,
+              files: updatedFiles
+            }
+          };
+
+          console.log("✅ State update complete");
+          return newState;
+        }
+
+        // Fallback to old structure (legacy support)
+        console.log("  - Using legacy test structure");
+        return {
+          parserOutput: { ...state.parserOutput, tests: testCases }
+        };
+      }),
       setScaffold: (scaffold) => set({
         scaffold,
         // Reset progress when new scaffold is loaded

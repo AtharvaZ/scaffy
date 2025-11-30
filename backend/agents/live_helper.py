@@ -14,14 +14,42 @@ logger = logging.getLogger(__name__)
 class LiveHelperAgent:
     
     def __init__(self):
-        self.client = get_anthropic_client()
+        # Use Sonnet 4 for hints - best for nuanced educational guidance
+        self.client = get_anthropic_client(model="claude-sonnet-4-20250514")
         self.max_retries = 3
 
     def provide_hint(self, inputData: HintResponseSchema) -> HintSchema:
         """
         Provide hint with retry logic for robust JSON extraction.
         Retries up to max_retries times if JSON parsing fails.
+        NEW: Can analyze test results to help debug test cases when code is correct.
         """
+        # Log test results info with detailed data
+        if inputData.test_results:
+            logger.info("=" * 80)
+            logger.info(f"📊 TEST RESULTS RECEIVED: {len(inputData.test_results)} tests")
+
+            # Correct test filtering logic
+            passed = [t for t in inputData.test_results if t.get('passed') == True]
+            failed = [t for t in inputData.test_results if t.get('passed') == False]
+
+            logger.info(f"  ✓ Passed: {len(passed)}, ✗ Failed: {len(failed)}")
+
+            # Log first 2 failed tests in detail
+            if failed:
+                logger.info("\n  FAILED TEST DETAILS:")
+                for idx, test in enumerate(failed[:2], 1):
+                    logger.info(f"    Test {idx}: {test.get('test_name', 'Unknown')}")
+                    logger.info(f"      Function: {test.get('function_name', 'N/A')}")
+                    logger.info(f"      Input: {test.get('input_data', 'N/A')}")
+                    logger.info(f"      Expected: {test.get('expected_output', 'N/A')}")
+                    logger.info(f"      Actual: {test.get('actual_output', 'N/A')}")
+                    if test.get('error'):
+                        logger.info(f"      Error: {test.get('error')}")
+            logger.info("=" * 80)
+        else:
+            logger.info("📊 No test results provided")
+
         prompt = get_helper_prompt(
             task_description=inputData.task_description,
             concepts=inputData.concepts,
@@ -31,8 +59,22 @@ class LiveHelperAgent:
             help_count=inputData.help_count,
             known_language=inputData.known_language,
             target_language=inputData.target_language,
-            experience_level=inputData.experience_level
+            experience_level=inputData.experience_level,
+            test_results=inputData.test_results  # NEW: Pass test results for analysis
         )
+
+        # Log if test results section is in prompt
+        if inputData.test_results:
+            if "TEST RESULTS:" in prompt:
+                logger.info("✅ Test results section FOUND in prompt")
+                # Log how many characters the test section is
+                test_section_start = prompt.find("TEST RESULTS:")
+                test_section_end = prompt.find("Student's Question:", test_section_start)
+                if test_section_start != -1 and test_section_end != -1:
+                    section_length = test_section_end - test_section_start
+                    logger.info(f"   Test results section length: {section_length} chars")
+            else:
+                logger.warning("❌ Test results were provided but NOT FOUND in prompt!")
 
         last_error = None
         for attempt in range(self.max_retries):
@@ -46,11 +88,20 @@ class LiveHelperAgent:
                 for req in requirements:
                     if req not in data:
                         raise ValueError(f"Missing required field '{req}' in the response data.")
-                    
+
                 if "example_code" not in data:
                     data["example_code"] = None
 
                 logger.info(f"Successfully generated hint on attempt {attempt + 1}")
+
+                # Log the hint for debugging (especially for test results cases)
+                if inputData.test_results:
+                    logger.info("=" * 80)
+                    logger.info("🎯 GENERATED HINT (with test results):")
+                    logger.info(f"   Hint Type: {data.get('hint_type', 'N/A')}")
+                    logger.info(f"   Hint Preview: {data.get('hint', '')[:200]}...")
+                    logger.info("=" * 80)
+
                 return HintSchema(**data)
                 
             except (ValueError, KeyError) as e:

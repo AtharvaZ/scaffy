@@ -7,6 +7,8 @@ import type {
   ParserOutput,
   ScaffoldPackage,
   RunnerResult,
+  TestResult,
+  TestCase,
 } from "../types";
 
 // Health check
@@ -70,7 +72,8 @@ export async function getHint(
   helpCount: number,
   knownLanguage?: string,
   targetLanguage?: string,
-  experienceLevel?: string
+  experienceLevel?: string,
+  testResults?: TestResult[]  // NEW: Optional test results for test case debugging
 ): Promise<HintSchema> {
   // Ensure all values are serializable
   const payload = {
@@ -85,6 +88,7 @@ export async function getHint(
     known_language: knownLanguage ? String(knownLanguage) : null,
     target_language: targetLanguage ? String(targetLanguage) : null,
     experience_level: experienceLevel ? String(experienceLevel) : null,
+    test_results: testResults || null,  // NEW: Pass test results for analysis
   };
 
   return apiCall<HintSchema>("/get-hint", {
@@ -107,6 +111,24 @@ export async function runCode(
       language,
       stdin: stdin || null,
       test_cases: testCases || null,
+    }),
+  });
+}
+
+// Generate test cases from user's code
+export async function generateTestsFromCode(
+  code: string,
+  language: string,
+  filename: string,
+  assignmentDescription?: string
+): Promise<{ tests: TestCase[]; message: string }> {
+  return apiCall("/generate-tests", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+      language,
+      filename,
+      assignment_description: assignmentDescription || null,
     }),
   });
 }
@@ -135,13 +157,45 @@ export async function parseAndScaffold(
     experienceLevel
   );
 
-  // Extract all tasks from files structure
-  const allTasksWithFiles: Array<{task: TaskSchema, filename: string}> = [];
+  // Extract global template variables from template_structure (for entire assignment)
+  const globalTemplateVariables = taskBreakdown.template_structure?.variable_names || [];
+
+  // Extract all tasks from files structure with class, template, and method info
+  const allTasksWithFiles: Array<{
+    task: TaskSchema,
+    filename: string,
+    className?: string,
+    templateVariables?: string[],
+    methodSignatures?: string[]
+  }> = [];
+
   if (taskBreakdown.files) {
     // New format with files
     for (const file of taskBreakdown.files) {
-      for (const task of file.tasks) {
-        allTasksWithFiles.push({ task, filename: file.filename });
+      // Handle both simple files (with tasks) and multi-class files (with classes)
+      if (file.tasks) {
+        for (const task of file.tasks) {
+          allTasksWithFiles.push({
+            task,
+            filename: file.filename,
+            // Use task-specific template vars if present, otherwise use global ones
+            templateVariables: task.template_variables || (globalTemplateVariables.length > 0 ? globalTemplateVariables : undefined)
+          });
+        }
+      } else if (file.classes) {
+        for (const classObj of file.classes) {
+          for (const task of classObj.tasks) {
+            allTasksWithFiles.push({
+              task,
+              filename: file.filename,
+              className: classObj.class_name,  // Track which class this task belongs to
+              // Use task-specific template vars if present, otherwise use global ones
+              templateVariables: task.template_variables || (globalTemplateVariables.length > 0 ? globalTemplateVariables : undefined),
+              // Pass method signatures from the class
+              methodSignatures: classObj.method_signatures || undefined
+            });
+          }
+        }
       }
     }
   } else if (taskBreakdown.tasks) {
@@ -165,14 +219,17 @@ export async function parseAndScaffold(
     }
   }
 
-  // Build batch request with filename
-  const batchRequest = allTasksWithFiles.map(({ task, filename }) => ({
+  // Build batch request with filename, class_name, template_variables, and method_signatures
+  const batchRequest = allTasksWithFiles.map(({ task, filename, className, templateVariables, methodSignatures }) => ({
     task_description: task.description,
     programming_language: targetLanguage,
     concepts: task.concepts,
     known_language: knownLanguage || undefined,
     experience_level: experienceLevel,
     filename: filename,
+    class_name: className || undefined,  // Pass class name if present
+    template_variables: templateVariables || undefined,  // Pass template vars if present
+    method_signatures: methodSignatures || undefined  // Pass method signatures if present
   }));
 
   // Simulate smooth progress during batch generation
@@ -293,11 +350,12 @@ export async function parseAndScaffold(
       overview: taskBreakdown.overview,
       total_estimated_time: taskBreakdown.total_estimated_time,
       files: taskBreakdown.files || [],
-      tests: taskBreakdown.tests,
+      // tests are now per-file (in files[].tests), not at top level
     };
 
-    // Debug: Check if tests were generated
-    if (!taskBreakdown.tests || taskBreakdown.tests.length === 0) {
+    // Debug: Check if tests were generated (now per-file)
+    const totalTests = parserOutput.files.reduce((sum, file) => sum + (file.tests?.length || 0), 0);
+    if (totalTests === 0) {
       console.warn("⚠️ No test cases were generated for this assignment");
       console.warn("This may be due to:");
       console.warn("  - API rate limiting");
@@ -305,7 +363,7 @@ export async function parseAndScaffold(
       console.warn("  - Assignment not having testable functions");
       console.warn("Check backend logs for more details");
     } else {
-      console.log(`✓ Generated ${taskBreakdown.tests.length} test cases`);
+      console.log(`✓ Generated ${totalTests} test cases across ${parserOutput.files.length} file(s)`);
     }
 
     return {

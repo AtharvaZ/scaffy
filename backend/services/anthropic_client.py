@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 class AnthropicClient:
-    def __init__(self):
+    def __init__(self, model: str = "claude-sonnet-4-20250514"):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.client = anthropic.Anthropic(api_key=self.api_key)
-        self.model = "claude-sonnet-4-20250514"
-        
+        self.model = model
+
         # Retry configuration
         self.max_retries = 3
         self.base_delay = 1  # Start with 1 second delay
         self.max_delay = 60  # Max 60 seconds between retries
 
-    def generate_response(self, prompt: str, max_tokens: int = 4000) -> str:
+    def generate_response(self, prompt: str, max_tokens: int = 4000, model: str = None) -> str:
         """
         Generate response with retry logic and exponential backoff.
         Handles 529 (Overloaded) and other retryable errors.
@@ -31,10 +31,12 @@ class AnthropicClient:
         
         for attempt in range(self.max_retries):
             try:
-                logger.info(f"API call attempt {attempt + 1}/{self.max_retries}")
-                
+                # Use provided model or fall back to instance default
+                model_to_use = model or self.model
+                logger.info(f"API call attempt {attempt + 1}/{self.max_retries} using model: {model_to_use}")
+
                 response = self.client.messages.create(
-                    model=self.model,
+                    model=model_to_use,
                     max_tokens=max_tokens,
                     messages=[{"role": "user", "content": prompt}]
                 )
@@ -94,11 +96,14 @@ class AnthropicClient:
         return delay + jitter
 
 
-_client_instance = None
+_client_instances = {}
 
-def get_anthropic_client() -> AnthropicClient:
-    """Get or Create Anthropic Client Singleton"""
-    global _client_instance
-    if _client_instance is None:
-        _client_instance = AnthropicClient()
-    return _client_instance
+def get_anthropic_client(model: str = "claude-sonnet-4-20250514") -> AnthropicClient:
+    """
+    Get or Create Anthropic Client for specific model.
+    Uses a separate client instance per model to avoid conflicts.
+    """
+    global _client_instances
+    if model not in _client_instances:
+        _client_instances[model] = AnthropicClient(model=model)
+    return _client_instances[model]

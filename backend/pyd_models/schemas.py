@@ -26,6 +26,7 @@ class ClassSchema(BaseModel):
     class_name: str
     purpose: str
     tasks: List[TaskSchema]
+    method_signatures: Optional[List[str]] = []  # Method names/signatures to preserve from template
 
 # NEW: Template Structure Schema
 class TemplateStructure(BaseModel):
@@ -40,6 +41,7 @@ class FileSchema(BaseModel):
     purpose: str
     tasks: Optional[List[TaskSchema]] = None  # For simple files
     classes: Optional[List[ClassSchema]] = None  # For multi-class files
+    tests: Optional[List['TestCase']] = None  # Per-file test cases
 
 #Test Case Schema
 class TestCase(BaseModel):
@@ -56,7 +58,6 @@ class TaskBreakdownSchema(BaseModel):
     total_estimated_time: str
     template_structure: Optional[TemplateStructure] = None  # NEW: template info
     files: List[FileSchema]  # Changed from: tasks: List[TaskSchema]
-    tests: Optional[List[TestCase]] = None
 
 
 
@@ -74,6 +75,7 @@ class BoilerPlateCodeSchema(BaseModel):
     # NEW FIELDS for class and template support
     class_name: Optional[str] = None
     template_variables: Optional[List[str]] = None
+    method_signatures: Optional[List[str]] = None  # Method names to preserve from template
 
 #Output
 class StarterCode(BaseModel):
@@ -106,6 +108,7 @@ class HintResponseSchema(BaseModel):
    known_language: Optional[str] = None
    target_language: Optional[str] = None
    experience_level: Optional[str] = None
+   test_results: Optional[List[Dict]] = None  # NEW: Test results to help debug test failures
 
 #Output
 class HintSchema(BaseModel):
@@ -126,6 +129,7 @@ class CodeExecutionRequest(BaseModel):
 # Individual Test Result
 class TestResult(BaseModel):
     test_name: str
+    function_name: Optional[str] = None  # Function being tested
     passed: bool
     input_data: str
     expected_output: str
@@ -171,5 +175,19 @@ class ConceptExampleResponse(BaseModel):
     explanation: str
     comparison_to_known: Optional[str] = None  # If known_language provided
 
+
+#--------Schema for Test Generation from User Code--------#
+
+#Input
+class GenerateTestsRequest(BaseModel):
+    code: str  # User's completed code
+    language: str  # Programming language
+    filename: str  # Filename for context
+    assignment_description: Optional[str] = None  # Optional: original assignment for context
+
+#Output
+class GenerateTestsResponse(BaseModel):
+    tests: List[TestCase]
+    message: str
 
 

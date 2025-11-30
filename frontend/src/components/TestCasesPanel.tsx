@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, TestTube2, Edit2, Trash2, Plus, Save, X, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import type { TestCase, TestResult } from '../types';
@@ -14,9 +14,14 @@ export function TestCasesPanel({ testCases, onTestCasesChange, testResults }: Te
   const [editingTest, setEditingTest] = useState<number | null>(null);
   const [editedTests, setEditedTests] = useState<TestCase[]>(testCases);
 
-  if (!testCases || testCases.length === 0) {
-    return null;
-  }
+  // Sync editedTests with testCases prop when it changes (e.g., after generating new tests)
+  useEffect(() => {
+    console.log("🔄 TestCasesPanel: testCases prop changed, updating editedTests");
+    console.log("  - New testCases length:", testCases.length);
+    setEditedTests(testCases);
+  }, [testCases]);
+
+  const hasTests = testCases && testCases.length > 0;
 
   // Helper function to get test result for a test case
   const getTestResult = (testName: string): TestResult | undefined => {
@@ -84,23 +89,33 @@ export function TestCasesPanel({ testCases, onTestCasesChange, testResults }: Te
             Test Cases
           </h3>
           <span className="ml-auto text-sm text-gray-600 dark:text-gray-400">
-            {testCases.length} {testCases.length === 1 ? 'test' : 'tests'}
+            {hasTests ? `${testCases.length} ${testCases.length === 1 ? 'test' : 'tests'}` : 'No tests'}
           </span>
-          <Button
-            onClick={handleAddTest}
-            size="sm"
-            variant="outline"
-            className="ml-2 h-6 px-2 text-xs"
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Add Test
-          </Button>
+          {hasTests && (
+            <Button
+              onClick={handleAddTest}
+              size="sm"
+              variant="outline"
+              className="ml-2 h-6 px-2 text-xs"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Test
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Test Cases List */}
       <div className="flex-1 overflow-y-auto">
-        {testCases.map((test, index) => {
+        {!hasTests ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <TestTube2 className="h-12 w-12 text-gray-400 dark:text-gray-600 mb-4" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              No test cases available
+            </p>
+          </div>
+        ) : (
+          testCases.map((test, index) => {
           const testKey = `${test.test_name}-${index}`;
           const isExpanded = expandedTest === testKey;
           const isEditing = editingTest === index;
@@ -348,7 +363,8 @@ export function TestCasesPanel({ testCases, onTestCasesChange, testResults }: Te
               )}
             </div>
           );
-        })}
+        })
+        )}
       </div>
     </div>
   );

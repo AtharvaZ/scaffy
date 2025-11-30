@@ -13,10 +13,10 @@ import { DarkModeToggle } from "../components/DarkModeToggle";
 import { TestCaseResults } from "../components/TestCaseResults";
 import { TestCasesPanel } from "../components/TestCasesPanel";
 import { FileSelector } from "../components/FileSelector";
-import { runCode } from "../api/endpoints";
+import { runCode, generateTestsFromCode } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
-import { ArrowLeft, Lightbulb, Code2, Trash2, X } from "lucide-react";
+import { ArrowLeft, Lightbulb, Code2, Trash2, X, Sparkles } from "lucide-react";
 import { AutoSaveIndicator } from "../components/SaveIndicator";
 
 export function EditorPage() {
@@ -64,9 +64,20 @@ export function EditorPage() {
   >(undefined);
   const [selectedTaskForExamples, setSelectedTaskForExamples] = useState<number | undefined>(undefined);
   const [lastTestResults, setLastTestResults] = useState<any[] | null>(null);
+  const [isGeneratingTests, setIsGeneratingTests] = useState(false);
 
   // Track previous currentFile to detect changes
   const prevCurrentFileRef = useRef<string | null>(null);
+
+  // Debug: Log when parserOutput changes (specifically when tests change)
+  useEffect(() => {
+    if (parserOutput?.files) {
+      console.log("🔄 parserOutput.files changed:");
+      parserOutput.files.forEach(file => {
+        console.log(`  - ${file.filename}: ${file.tests?.length || 0} tests`);
+      });
+    }
+  }, [parserOutput?.files]);
 
   // Redirect if no scaffold
   useEffect(() => {
@@ -124,13 +135,26 @@ export function EditorPage() {
     for (const file of parserOutput.files) {
       if (file.filename === currentFile) {
         // Found our file - add all its task indices
-        for (let i = 0; i < file.tasks.length; i++) {
+        // Handle both simple files (tasks) and multi-class files (classes)
+        let taskCount = 0;
+        if (file.tasks) {
+          taskCount = file.tasks.length;
+        } else if (file.classes) {
+          taskCount = file.classes.reduce((sum, c) => sum + c.tasks.length, 0);
+        }
+        for (let i = 0; i < taskCount; i++) {
           taskIndices.push(globalTaskIndex + i);
         }
         break;
       }
       // Not our file - skip its tasks
-      globalTaskIndex += file.tasks.length;
+      let fileTaskCount = 0;
+      if (file.tasks) {
+        fileTaskCount = file.tasks.length;
+      } else if (file.classes) {
+        fileTaskCount = file.classes.reduce((sum, c) => sum + c.tasks.length, 0);
+      }
+      globalTaskIndex += fileTaskCount;
     }
 
     return taskIndices;
@@ -164,25 +188,23 @@ export function EditorPage() {
     return localCompleted;
   })();
 
-  // Filter test cases for current file
+  // Get test cases for current file (tests are now per-file)
   const currentFileTests = (() => {
-    if (!hasMultipleFiles || !parserOutput?.tests || !currentFile) {
-      return parserOutput?.tests || [];
+    // For single-file assignments, look for tests in the first file
+    if (!hasMultipleFiles && parserOutput?.files?.[0]?.tests) {
+      console.log("📋 currentFileTests (single-file):", parserOutput.files[0].tests.length, "tests");
+      return parserOutput.files[0].tests;
     }
 
-    // Filter tests that belong to functions in the current file
-    // We'll use a simple heuristic: if the test references a function that's in this file's tasks
-    const currentFileTasks = getCurrentFileTasks();
-    const currentFileTaskTitles = currentFileTasks.map(idx =>
-      scaffold?.todo_list[idx] || ''
-    );
+    // For multi-file assignments, get tests from current file
+    if (hasMultipleFiles && parserOutput?.files && currentFile) {
+      const fileData = parserOutput.files.find(f => f.filename === currentFile);
+      console.log("📋 currentFileTests (multi-file):", fileData?.filename, "-", fileData?.tests?.length || 0, "tests");
+      return fileData?.tests || [];
+    }
 
-    return parserOutput.tests.filter(test => {
-      // Check if test function name appears in any of the current file's task titles
-      return currentFileTaskTitles.some(title =>
-        title.toLowerCase().includes(test.function_name.toLowerCase())
-      );
-    });
+    console.log("📋 currentFileTests: no tests found");
+    return [];
   })();
 
   // Handle file switching
@@ -253,6 +275,53 @@ export function EditorPage() {
   const handleContinue = () => {
     setShowFeedback(false);
     setFeedback(null);
+  };
+
+  const handleGenerateTests = async () => {
+    console.log("🔄 handleGenerateTests called");
+    console.log("  - studentCode length:", studentCode?.length || 0);
+    console.log("  - currentFile:", currentFile);
+    console.log("  - language:", language);
+
+    if (!studentCode || !currentFile) {
+      console.warn("❌ Missing studentCode or currentFile, returning early");
+      return;
+    }
+
+    setIsGeneratingTests(true);
+    setError(null);
+
+    try {
+      // Get assignment description from scaffold if available
+      const assignmentDescription = parserOutput?.overview || undefined;
+      console.log("  - assignmentDescription:", assignmentDescription ? "present" : "none");
+
+      // Generate tests from user's code
+      console.log("📡 Calling API to generate tests...");
+      const result = await safeApiCall(
+        () => generateTestsFromCode(studentCode, language, currentFile, assignmentDescription),
+        "Failed to generate tests"
+      );
+
+      console.log("📥 API response received:", result);
+
+      if (result && result.tests && result.tests.length > 0) {
+        // Update test cases in store
+        console.log(`✅ Updating test cases with ${result.tests.length} tests`);
+        console.log("  - Tests:", result.tests);
+        updateTestCases(result.tests);
+        console.log(`✓ Generated ${result.tests.length} test cases`);
+      } else {
+        console.warn("⚠️ No tests generated:", result?.message);
+        setError(result?.message || "No tests were generated. Please check your code.");
+      }
+    } catch (err) {
+      console.error("❌ Error generating tests:", err);
+      setError(err instanceof Error ? err.message : "An error occurred generating tests");
+    } finally {
+      console.log("🏁 handleGenerateTests complete");
+      setIsGeneratingTests(false);
+    }
   };
 
   // Keyboard shortcut for running tests
@@ -337,14 +406,13 @@ export function EditorPage() {
                 Cancel
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={() => {
                   reset();
                   localStorage.removeItem('scaffy-app-storage');
                   setShowClearConfirm(false);
                   navigate('/task');
                 }}
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               >
                 Clear Everything
               </Button>
@@ -460,11 +528,31 @@ export function EditorPage() {
                         Examples
                       </Button>
                     </div>
-                    <RunButton
-                      onClick={handleRunTests}
-                      loading={isRunning}
-                      disabled={!studentCode || isRunning}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleGenerateTests}
+                        disabled={isGeneratingTests || !studentCode}
+                        size="lg"
+                        className="bg-black text-white hover:bg-black/90 transition-all duration-150"
+                      >
+                        {isGeneratingTests ? (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                            Generating Tests...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Generate Tests
+                          </>
+                        )}
+                      </Button>
+                      <RunButton
+                        onClick={handleRunTests}
+                        loading={isRunning}
+                        disabled={!studentCode || isRunning}
+                      />
+                    </div>
                   </div>
 
                   {/* Compilation Error Section - Show when error exists and all tests have no output */}
@@ -592,6 +680,7 @@ export function EditorPage() {
                 currentTodoIndex={0}
                 knownLanguage={proficientLanguage}
                 experienceLevel={experienceLevel}
+                testResults={runnerResult?.test_results}
                 onClose={() => {
                   setShowHelpPanel(false);
                   setAutoTriggerQuestion(undefined);

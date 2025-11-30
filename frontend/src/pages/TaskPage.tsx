@@ -7,7 +7,7 @@ import { parseAndScaffold, getConceptExample } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
 import { DarkModeToggle } from "../components/DarkModeToggle";
-import { ArrowRight, Code2, Loader2, Eye, X, Lightbulb } from "lucide-react";
+import { ArrowRight, Loader2, Eye, X, Lightbulb } from "lucide-react";
 
 export function TaskPage() {
   const navigate = useNavigate();
@@ -121,13 +121,21 @@ export function TaskPage() {
 
         // Convert TaskBreakdownSchema to ParserOutput format for compatibility
         // Flatten files structure into tasks array for backward compatibility
-        const allTasks = result.parser_output.files?.flatMap(file => file.tasks) || [];
+        const allTasks = result.parser_output.files?.flatMap(file => {
+          // Handle both simple files (with tasks) and multi-class files (with classes)
+          if (file.tasks) {
+            return file.tasks;
+          } else if (file.classes) {
+            return file.classes.flatMap(classObj => classObj.tasks);
+          }
+          return [];
+        }) || [];
         const parserOutput = {
           tasks: allTasks,
           files: result.parser_output.files,
           overview: result.parser_output.overview,
           total_estimated_time: result.parser_output.total_estimated_time,
-          tests: result.parser_output.tests,
+          // tests are now per-file (in files[].tests), not at top level
         };
         setParserOutput(parserOutput);
         setScaffold(result.scaffold_package);
@@ -318,11 +326,8 @@ export function TaskPage() {
                 const taskConceptExamples =
                   scaffold.task_concept_examples?.[`task_${taskIndex}`] || {};
 
-                // Get the code snippet for this specific task from starter_files
-                const fileExtension = language === "python" ? "py" : "js";
-                const fileName = `task_${taskIndex + 1}.${fileExtension}`;
-                const codeStructure =
-                  scaffold.starter_files?.[fileName] || null;
+                // Note: Code structure was previously retrieved here but is now unused
+                // as the multi-file editor handles code display differently
 
                 return (
                   <div

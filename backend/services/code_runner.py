@@ -14,7 +14,7 @@ class CodeRunner:
     def __init__(self):
         # Use public Piston API or set your own instance URL via environment variable
         self.piston_api_url = os.getenv("PISTON_API_URL", "https://emkc.org/api/v2/piston")
-        self.timeout = 10  # 10 second timeout
+        self.timeout = 30  # 30 second timeout (increased for complex programs with threading)
         self.max_output_length = 10000  # Limit output to prevent memory issues
         
         # Language mappings for Piston API
@@ -31,6 +31,47 @@ class CodeRunner:
             'typescript': 'typescript'
         }
     
+    def _check_output_match(self, actual_output: str, expected_output: str) -> bool:
+        """
+        Check if actual output matches expected output with support for special patterns.
+
+        Patterns:
+        - "CONTAINS:word1,word2,word3" → Check if output contains all words/phrases
+        - "COUNT:pattern:N" → Check if pattern appears exactly N times
+        - Regular string → Exact match (after stripping whitespace)
+
+        Args:
+            actual_output: Actual program output
+            expected_output: Expected output or pattern
+
+        Returns:
+            True if outputs match, False otherwise
+        """
+        expected = expected_output.strip()
+        actual = actual_output.strip()
+
+        # Pattern 1: CONTAINS check
+        if expected.startswith("CONTAINS:"):
+            patterns = expected[9:].split(",")  # Remove "CONTAINS:" prefix
+            # All patterns must be in output
+            return all(pattern.strip() in actual for pattern in patterns)
+
+        # Pattern 2: COUNT check
+        if expected.startswith("COUNT:"):
+            parts = expected[6:].split(":")  # Remove "COUNT:" prefix
+            if len(parts) == 2:
+                pattern, count_str = parts
+                try:
+                    expected_count = int(count_str.strip())
+                    actual_count = actual.count(pattern.strip())
+                    return actual_count == expected_count
+                except ValueError:
+                    logger.warning(f"Invalid COUNT pattern: {expected}")
+                    return False
+
+        # Default: Exact match
+        return actual == expected
+
     def run_code(self, code: str, language: str, stdin: Optional[str] = None) -> Dict[str, Any]:
         """
         Run code using Piston API
@@ -189,8 +230,64 @@ class CodeRunner:
                     elif language.lower() in ['javascript', 'js']:
                         test_code = f"{code}\n\n// Test execution\nconst result = {function_name}({input_data});\nconsole.log(result);"
                     elif language.lower() in ['csharp', 'c#', 'cs']:
-                        # For C#, wrap in a proper Main method
-                        test_code = f"""{code}
+                        # For C#, check if code already has Main method
+                        has_main = 'static void Main' in code or 'static async Task Main' in code
+
+                        if function_name.lower() == 'main' and has_main:
+                            # Integration test - code already has Main, just run it
+                            test_code = code
+                        elif function_name.lower() == 'main' and not has_main:
+                            # Need to add Main method to call the function
+                            test_code = f"""{code}
+
+// Test execution
+class TestRunner {{
+    static void Main(string[] args) {{
+        {function_name}({input_data});
+    }}
+}}"""
+                        elif '.' in function_name:
+                            # Method test with namespace/class qualification (e.g., Namespace.ClassName.MethodName or ClassName.MethodName)
+                            parts = function_name.split('.')
+
+                            if len(parts) == 3:
+                                # Namespace.ClassName.MethodName format
+                                namespace_name, class_name, method_name = parts
+                                full_class_name = f"{namespace_name}.{class_name}"
+                            elif len(parts) == 2:
+                                # ClassName.MethodName format
+                                class_name, method_name = parts
+                                full_class_name = class_name
+                            else:
+                                # Fallback for unexpected format
+                                full_class_name = parts[0]
+                                method_name = parts[-1]
+
+                            if has_main:
+                                # Code has Main, need to call method from outside the namespace
+                                # Remove the existing Main and add test Main outside namespace
+                                # This is complex, so for integration tests just run the code
+                                test_code = code
+                            else:
+                                # No Main exists, add TestRunner outside the namespace
+                                test_code = f"""{code}
+
+// Test execution
+class TestRunner {{
+    static void Main(string[] args) {{
+        var instance = new {full_class_name}();
+        var result = instance.{method_name}({input_data});
+        Console.WriteLine(result);
+    }}
+}}"""
+                        else:
+                            # Simple function name without dots
+                            if has_main:
+                                # Already has Main, just run it
+                                test_code = code
+                            else:
+                                # Add Main to call the function
+                                test_code = f"""{code}
 
 // Test execution
 class TestRunner {{
@@ -200,8 +297,26 @@ class TestRunner {{
     }}
 }}"""
                     elif language.lower() in ['java']:
-                        # For Java, wrap in a proper Main method
-                        test_code = f"""{code}
+                        # For Java, handle integration tests vs function tests
+                        if function_name.lower() == 'main':
+                            # Integration test - run the whole program
+                            test_code = code
+                        else:
+                            # Function test
+                            if '.' in function_name:
+                                class_name, method_name = function_name.split('.', 1)
+                                test_code = f"""{code}
+
+// Test execution
+class TestRunner {{
+    public static void main(String[] args) {{
+        {class_name} instance = new {class_name}();
+        var result = instance.{method_name}({input_data});
+        System.out.println(result);
+    }}
+}}"""
+                            else:
+                                test_code = f"""{code}
 
 // Test execution
 class TestRunner {{
@@ -220,8 +335,8 @@ class TestRunner {{
                     # Get actual output and clean it
                     actual_output = result.get('output', '').strip()
 
-                    # Check if test passed (compare outputs as strings)
-                    passed = actual_output == expected_output
+                    # Check if test passed (compare outputs with special pattern matching)
+                    passed = self._check_output_match(actual_output, expected_output)
 
                     if passed:
                         tests_passed += 1
@@ -231,6 +346,7 @@ class TestRunner {{
                     # Create test result
                     test_result = TestResult(
                         test_name=test_name,
+                        function_name=function_name,  # Add function name
                         passed=passed,
                         input_data=input_data,
                         expected_output=expected_output,
@@ -243,6 +359,7 @@ class TestRunner {{
                     logger.error(f"Error running test case '{test_name}': {e}")
                     test_results.append(TestResult(
                         test_name=test_case.get('test_name', 'Unknown Test'),
+                        function_name=test_case.get('function_name', 'Unknown'),  # Add function name
                         passed=False,
                         input_data=test_case.get('input_data', ''),
                         expected_output=test_case.get('expected_output', ''),

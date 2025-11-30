@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { X, Lightbulb, Loader2 } from 'lucide-react';
 import { getHint } from '../api/endpoints';
 import { safeApiCall } from '../api/client';
-import type { ScaffoldPackage } from '../types';
+import type { ScaffoldPackage, TestResult } from '../types';
 
 interface GetHintProps {
   code: string;
@@ -13,12 +13,13 @@ interface GetHintProps {
   currentTodoIndex?: number;
   knownLanguage?: string;
   experienceLevel?: string;
+  testResults?: TestResult[];  // NEW: Test results for test case debugging
   onClose: () => void;
   autoTrigger?: boolean;
   autoTriggerQuestion?: string;
 }
 
-export function GetHint({ code, language, currentTask, scaffold, currentTodoIndex = 0, knownLanguage, experienceLevel, onClose, autoTrigger = false, autoTriggerQuestion }: GetHintProps) {
+export function GetHint({ code, language, currentTask, scaffold, currentTodoIndex = 0, knownLanguage, experienceLevel, testResults, onClose, autoTrigger = false, autoTriggerQuestion }: GetHintProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [helpCount, setHelpCount] = useState(0);
@@ -63,7 +64,8 @@ export function GetHint({ code, language, currentTask, scaffold, currentTodoInde
           helpCount + 1,
           cleanKnownLanguage,
           cleanTargetLanguage,
-          experienceLevel
+          experienceLevel,
+          testResults  // NEW: Pass test results for analysis
         ),
         'Failed to get hint'
       );
@@ -169,7 +171,7 @@ export function GetHint({ code, language, currentTask, scaffold, currentTodoInde
       {/* Footer */}
       <div className="px-4 py-3 border-t border-black/5 dark:border-border flex-shrink-0 bg-white dark:bg-background">
         <Button
-          onClick={handleGetHint}
+          onClick={() => handleGetHint()}
           disabled={isLoading}
           className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 dark:from-blue-500 dark:to-blue-400 dark:hover:from-blue-600 dark:hover:to-blue-500"
         >

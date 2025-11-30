@@ -35,9 +35,11 @@ def extract_json_from_response(response_text: str) -> dict:
         return json_obj
     
     # Last resort: try to find any valid JSON in the response
-    # Look for patterns like { ... } with proper nesting
+    # IMPORTANT: Try from the BEGINNING first to get outermost object
+    # This prevents extracting inner objects when the response is truncated
     start_positions = [i for i, char in enumerate(response_text) if char == '{']
-    
+
+    # Prioritize the first '{' (outermost object)
     for start in start_positions:
         # Try to find the matching closing brace
         brace_count = 0
@@ -147,6 +149,12 @@ def validate_task_breakdown(data: dict) -> bool:
                 for field in task_fields:
                     if field not in task:
                         raise ValueError(f"Task in '{filename}' missing required field: {field}")
+
+        # Validate tests if present (tests are now per-file)
+        if "tests" in file_obj and file_obj["tests"] is not None:
+            if not isinstance(file_obj["tests"], list):
+                raise ValueError(f"File '{filename}' tests must be a list")
+            logger.info(f"File '{filename}' has {len(file_obj['tests'])} tests")
 
         # Validate multi-class file structure (classes with tasks)
         if has_classes:

@@ -8,13 +8,24 @@ export interface TaskSchema {
   dependencies: number[];
   estimated_time: string;
   concepts: string[];
+  template_variables?: string[];  // Variable names from template to preserve
 }
 
-// NEW: File Schema for multi-file support
+// Class Schema for multi-class files
+export interface ClassSchema {
+  class_name: string;
+  purpose: string;
+  tasks: TaskSchema[];
+  method_signatures?: string[];  // Method names/signatures to preserve from template
+}
+
+// NEW: File Schema for multi-file support (updated for multi-class and per-file tests)
 export interface FileSchema {
   filename: string;
   purpose: string;
-  tasks: TaskSchema[];
+  tasks?: TaskSchema[] | null;  // For simple files
+  classes?: ClassSchema[] | null;  // For multi-class files
+  tests?: TestCase[] | null;  // Per-file test cases
 }
 
 // Test Case Schema (from backend)
@@ -27,12 +38,21 @@ export interface TestCase {
   test_type: "normal" | "edge" | "error";
 }
 
+// Template Structure Schema (from backend)
+export interface TemplateStructure {
+  has_template: boolean;
+  variable_names: string[];
+  class_names: string[];
+  method_signatures?: string[];
+}
+
 // Task Breakdown Schema (from backend) - UPDATED FOR MULTI-FILE
 export interface TaskBreakdownSchema {
   overview: string;
   total_estimated_time: string;
+  template_structure?: TemplateStructure;  // Global template info
   files: FileSchema[];  // Changed from: tasks: TaskSchema[]
-  tests?: TestCase[];
+  // tests are now per-file (in FileSchema.tests), not at top level
 }
 
 // Legacy ParserOutput for compatibility - keeping both formats
@@ -41,6 +61,7 @@ export interface ParserOutput {
   files?: FileSchema[];  // New format
   overview: string;
   total_estimated_time: string;
+  template_structure?: TemplateStructure;  // Template info
   tests?: TestCase[];
 }
 
@@ -78,6 +99,7 @@ export interface HintSchema {
 // Test Result (from backend)
 export interface TestResult {
   test_name: string;
+  function_name?: string;  // Function being tested
   passed: boolean;
   input_data: string;
   expected_output: string;
