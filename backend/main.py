@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import os
 import uvicorn
 import logging
@@ -8,6 +9,19 @@ from dotenv import load_dotenv
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Import security utilities
+from utils.security import (
+    validate_assignment_text,
+    validate_code,
+    validate_hint_question,
+    validate_pdf_file,
+    validate_language,
+    validate_request_size,
+    check_malicious_content,
+    sanitize_filename
+)
+from config import MAX_PDF_SIZE, MAX_TOTAL_FILES_SIZE
 
 from pyd_models.schemas import (
     AssignmentSchema,
@@ -41,6 +55,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Import and add rate limiting middleware
+from middleware.rate_limiter import rate_limit_middleware
+app.middleware("http")(rate_limit_middleware)
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://scaffi-ai.onrender.com",  # Your frontend URL (update after deploy)
