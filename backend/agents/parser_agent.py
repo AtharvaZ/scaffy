@@ -194,26 +194,18 @@ class ParserAgent:
             logger.error(f"All {self.max_retries} attempts failed")
             raise ValueError(f"Failed to parse assignment after {self.max_retries} attempts: {str(last_error)}")
 
-        # Generate test cases PER-FILE (similar to how codegen works per-file)
+        # DISABLED: Automatic test generation during parsing
+        # Tests are now generated on-demand when user clicks "Generate Tests" button
+        # This allows the AI to analyze the user's actual code, not just the boilerplate
         files_list = task_breakdown_result.get('files', [])
         if files_list:
-            logger.info(f"Generating tests for {len(files_list)} files")
+            logger.info(f"Skipping automatic test generation for {len(files_list)} files")
+            logger.info("Tests will be generated on-demand from user's code")
             for file_data in files_list:
-                filename = file_data.get('filename', 'unknown')
-                logger.info(f"Generating tests for file: {filename}")
-
-                # Generate tests for this specific file
-                test_cases = self.generate_test_cases_for_file(
-                    assignment_text=inputData.assignment_text,
-                    file_data=file_data,
-                    target_language=inputData.target_language
-                )
-
-                # Add tests to this file's data
-                file_data['tests'] = test_cases
-                logger.info(f"Added {len(test_cases)} tests to {filename}")
+                # Initialize with empty test array
+                file_data['tests'] = []
         else:
-            logger.warning("No files found for test generation, skipping")
+            logger.warning("No files found, initializing with empty tests")
 
         return TaskBreakdownSchema(**task_breakdown_result)
 
