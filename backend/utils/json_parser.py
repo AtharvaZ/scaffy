@@ -13,19 +13,27 @@ def extract_json_from_response(response_text: str) -> dict:
     - Nested braces in strings
     """
     # Log original response for debugging
-    logger.debug(f"Extracting JSON from response (length: {len(response_text)})")
-    
+    logger.info(f"Extracting JSON from response (length: {len(response_text)})")
+    logger.info(f"First 100 chars: {response_text[:100]}")
+    logger.info(f"Last 100 chars: {response_text[-100:]}")
+
     # First, try to remove common markdown patterns
     # Remove ```json at start and ``` at end
     cleaned = response_text.strip()
     cleaned = re.sub(r'^```json\s*', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'^```\s*', '', cleaned)
     cleaned = re.sub(r'\s*```\s*$', '', cleaned)
-    
+
+    logger.info(f"After markdown removal - first 100 chars: {cleaned[:100]}")
+    logger.info(f"After markdown removal - last 100 chars: {cleaned[-100:]}")
+
     # Try to parse the cleaned text directly first (fastest path)
     try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
+        result = json.loads(cleaned)
+        logger.info(f"Successfully parsed cleaned JSON with keys: {list(result.keys())}")
+        return result
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse cleaned JSON: {e}")
         pass
     
     # If that didn't work, try to extract JSON object by finding matching braces
@@ -129,15 +137,15 @@ def validate_task_breakdown(data: dict) -> bool:
         if "filename" not in file_obj or "purpose" not in file_obj:
             raise ValueError(f"File missing required field: filename or purpose")
 
-        # File must have EITHER tasks OR classes, not both or neither
-        has_tasks = "tasks" in file_obj and file_obj["tasks"] is not None
-        has_classes = "classes" in file_obj and file_obj["classes"] is not None
+        # File must have EITHER tasks OR classes, not both
+        has_tasks = "tasks" in file_obj and file_obj["tasks"] is not None and len(file_obj["tasks"]) > 0
+        has_classes = "classes" in file_obj and file_obj["classes"] is not None and len(file_obj["classes"]) > 0
 
         if has_tasks and has_classes:
             raise ValueError(f"File '{filename}' has both 'tasks' and 'classes' - must have only one")
 
         if not has_tasks and not has_classes:
-            raise ValueError(f"File '{filename}' has neither 'tasks' nor 'classes' - must have one")
+            raise ValueError(f"File '{filename}' has neither 'tasks' nor 'classes' - all files must have at least one task or class")
 
         # Validate simple file structure (tasks directly in file)
         if has_tasks:

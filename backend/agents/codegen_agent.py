@@ -10,6 +10,47 @@ from utils.json_parser import extract_json_from_response
 
 logger = logging.getLogger(__name__)
 
+#validation function to check for duplication
+def validate_no_duplication(code_snippet: str, class_names: list) -> bool:
+    """Check if classes are duplicated in the generated code"""
+    if not class_names:
+        return True  # No classes to check
+
+    for class_name in class_names:
+        # Check for class declarations (handles different language syntaxes)
+        patterns = [
+            f"class {class_name}",  # Python, C#, Java
+            f"public class {class_name}",  # C#, Java
+            f"private class {class_name}",  # C#, Java
+            f"protected class {class_name}",  # C#, Java
+        ]
+
+        total_count = 0
+        matched_patterns = []
+        for pattern in patterns:
+            count = code_snippet.count(pattern)
+            if count > 0:
+                matched_patterns.append(f"{pattern} ({count}x)")
+                total_count += count
+
+        if total_count > 1:
+            logger.error(f"Class {class_name} appears {total_count} times - DUPLICATION DETECTED!")
+            logger.error(f"Matched patterns: {', '.join(matched_patterns)}")
+            # Find line numbers where class appears
+            lines = code_snippet.split('\n')
+            for i, line in enumerate(lines, 1):
+                if any(pattern in line for pattern in patterns):
+                    logger.error(f"  Line {i}: {line.strip()}")
+            return False
+    
+    # Also check for namespace/package duplication
+    namespace_count = code_snippet.count("namespace ConsoleApp1")
+    if namespace_count > 1:
+        logger.error(f"Namespace duplicated {namespace_count} times!")
+        return False
+    
+    return True
+
 # Agent responsible for generating boilerplate code templates
 class CodegenAgent:
 
@@ -19,28 +60,39 @@ class CodegenAgent:
         self.max_retries = 3
 
     def generate_file_scaffolding(self, filename: str,
-                                   tasks: List[BoilerPlateCodeSchema],
-                                   class_structure: dict = None,
-                                   template_variables: list = None,
-                                   method_signatures_by_class: dict = None) -> List[StarterCode]:
+                               tasks: List[BoilerPlateCodeSchema],
+                               class_structure: dict = None,
+                               template_variables: list = None,
+                               method_signatures_by_class: dict = None) -> List[StarterCode]:
         """
         Generate scaffolding for ONE complete file.
-
-        Args:
-            filename: Name of file to generate
-            tasks: List of tasks for this file
-            class_structure: Dict of {class_name: [tasks]} or None for single-class
-            template_variables: List of variable names from template to preserve, or None
-            method_signatures_by_class: Dict of {class_name: [method_names]} for template methods
-
-        Returns:
-            List of StarterCode objects for this file's tasks
+        Handles both code files and data files appropriately.
         """
-
         if not tasks:
             raise ValueError(f"No tasks provided for {filename}")
 
-        # Convert tasks to dict format for prompt
+        # Detect if this is a non-code file (data/config/build files)
+        # These should contain actual content, not code to generate them
+        non_code_extensions = [
+            '.xml', '.xsd', '.json', '.yaml', '.yml', '.toml',  # Data/config
+            '.txt', '.csv', '.md',  # Text/documentation
+            '.html', '.css', '.sql',  # Web/database
+            '.sh', '.bat', '.ps1',  # Shell scripts (treated as config)
+            '.dockerfile', '.dockerignore',  # Docker
+            '.gitignore', '.gitattributes',  # Git
+            '.env', '.properties', '.ini', '.cfg'  # Config files
+        ]
+
+        # Special files without extensions (case-insensitive)
+        special_filenames = ['makefile', 'dockerfile', 'rakefile', 'gemfile', 'procfile', 'vagrantfile', 'cmakelists.txt']
+
+        is_non_code_file = (
+            any(filename.lower().endswith(ext) for ext in non_code_extensions) or
+            filename.lower() in special_filenames or
+            filename.lower().startswith('makefile')  # Makefile.inc, Makefile.am, etc.
+        )
+
+        # Convert tasks to dict format
         tasks_dict_list = []
         for task in tasks:
             task_dict = {
@@ -55,114 +107,93 @@ class CodegenAgent:
             }
             tasks_dict_list.append(task_dict)
 
-        # Get focused prompt for THIS file
-        from utils.agent_prompts import get_file_codegen_prompt
+        # Use different prompt for non-code files vs code files
+        from utils.agent_prompts import get_file_codegen_prompt, get_non_code_file_prompt
+        if is_non_code_file:
+            prompt = get_non_code_file_prompt(tasks_dict_list, filename)
+        else:
+            prompt = get_file_codegen_prompt(
+                tasks_dict_list,
+                filename,
+                class_structure=class_structure,
+                template_variables=template_variables,
+                method_signatures_by_class=method_signatures_by_class
+            )
 
-        prompt = get_file_codegen_prompt(
-            tasks_dict_list,
-            filename,
-            class_structure=class_structure,
-            template_variables=template_variables,
-            method_signatures_by_class=method_signatures_by_class
-        )
+        # Smart token allocation for new compact format
+        # New format: ONE code_snippet + task_todos dict (much more compact!)
+        base_tokens = 1000  # Increased base for file scaffolding
+        per_task = 100  # Reduced - we only need todos, not full code per task
+        per_class = 400 if class_structure else 0
+
+        estimated_tokens = base_tokens + (len(tasks) * per_task)
+        if class_structure:
+            estimated_tokens += len(class_structure) * per_class
+
+        max_tokens = min(estimated_tokens, 8000)  # Increased cap for complex files
+        logger.info(f"Using {max_tokens} tokens for {len(tasks)} tasks in {filename}")
+
+        # ADD THIS: Extra instruction for complex files
+        if len(tasks) > 5 or (class_structure and len(class_structure) > 2):
+            prompt += "\n\nCRITICAL: Generate ONE complete file. Each class should appear EXACTLY ONCE. NO duplication."
 
         last_error = None
         for attempt in range(self.max_retries):
             try:
                 logger.info(f"File codegen for {filename}, attempt {attempt + 1}/{self.max_retries}")
 
-                # Smart token allocation (like the working version)
-                # Estimate based on task count - keep it reasonable
-                estimated_tokens = len(tasks) * 300  # ~300 tokens per task
-                max_tokens = min(estimated_tokens + 1000, 4000)  # Cap at 4000 like before
-
-                logger.info(f"Using {max_tokens} max tokens for {len(tasks)} tasks in {filename}")
-
                 response_text = self.client.generate_response(prompt, max_tokens=max_tokens)
 
-                # Log the response for debugging
+                # Log response for debugging
                 logger.info(f"AI response preview (first 500 chars): {response_text[:500]}")
-                logger.info(f"Response length: {len(response_text)} chars")
-                logger.info(f"Last 200 chars: {response_text[-200:]}")
-
-                # Save full response to temp file for debugging on first attempt
-                if attempt == 0:
-                    import tempfile
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                        f.write(response_text)
-                        logger.info(f"Full response saved to: {f.name}")
+                logger.info(f"AI response last 200 chars: {response_text[-200:]}")
+                logger.info(f"Total response length: {len(response_text)} characters")
 
                 data = extract_json_from_response(response_text)
+                logger.info(f"Extracted keys: {list(data.keys())}")
 
-                # Log what keys we got
-                logger.info(f"Parsed JSON keys: {list(data.keys())}")
-                logger.info(f"Data type: {type(data)}")
+                # New format: {"code_snippet": "...", "task_todos": {"1": [...], "2": [...]}}
+                if "code_snippet" in data and "task_todos" in data:
+                    code = data["code_snippet"]
+                    task_todos = data["task_todos"]
 
-                # Check if response was truncated by looking at the end
-                if not response_text.strip().endswith('}'):
-                    logger.warning(f"Response appears truncated (doesn't end with }}). Length: {len(response_text)}")
-                    logger.warning(f"Last 100 chars: {response_text[-100:]}")
-                    raise ValueError(f"Response truncated at {len(response_text)} chars. Need more tokens.")
+                    # Validate no class duplication
+                    if class_structure:
+                        if not validate_no_duplication(code, list(class_structure.keys())):
+                            # Log the problematic code for debugging
+                            logger.error("=" * 80)
+                            logger.error("DUPLICATION DETECTED - Dumping code_snippet for analysis:")
+                            logger.error(f"Code length: {len(code)} chars")
+                            logger.error("First 2000 chars:")
+                            logger.error(code[:2000])
+                            logger.error("=" * 80)
+                            raise ValueError("Class duplication detected")
 
-                # Validate response - handle both correct format and single task fallback
-                if "tasks" not in data:
-                    # Check if we got a single task object instead of wrapper
-                    if "task_number" in data and "code_snippet" in data:
-                        logger.warning(f"Got single task object instead of wrapper")
-                        logger.warning(f"Response likely truncated - outermost }} missing")
-                        raise ValueError(f"Response incomplete: got single task object, expected {{\"tasks\": [...]}} wrapper with {len(tasks)} tasks")
-                    else:
-                        logger.error(f"Response missing 'tasks' field. Got keys: {list(data.keys())}")
-                        logger.error(f"Full parsed data: {data}")
-                        raise ValueError(f"Response missing 'tasks' field. Got: {list(data.keys())}")
+                    # Expand into N task objects
+                    results = []
+                    for i, task in enumerate(tasks, 1):
+                        results.append(StarterCode(
+                            code_snippet=code,  # Same for all
+                            instructions=f"Task {i}: {task.task_description}",
+                            todos=task_todos.get(str(i), []),
+                            concept_examples=None,
+                            filename=filename
+                        ))
 
-                if not isinstance(data["tasks"], list):
-                    raise ValueError("'tasks' must be a list")
+                    logger.info(f"Expanded to {len(results)} tasks")
+                    return results
 
-                if len(data["tasks"]) != len(tasks):
-                    raise ValueError(f"Expected {len(tasks)} tasks, got {len(data['tasks'])}")
-
-                # Convert to StarterCode objects
-                results = []
-                for i, task_data in enumerate(data["tasks"], 1):
-                    if "code_snippet" not in task_data and "code" not in task_data:
-                        raise ValueError(f"Task {i} missing 'code_snippet' or 'code' field")
-                    if "instructions" not in task_data:
-                        raise ValueError(f"Task {i} missing 'instructions' field")
-                    if "todos" not in task_data:
-                        raise ValueError(f"Task {i} missing 'todos' field")
-                    if "filename" not in task_data:
-                        task_data["filename"] = filename
-
-                    if "code" in task_data and "code_snippet" not in task_data:
-                        task_data["code_snippet"] = task_data["code"]
-
-                    results.append(StarterCode(
-                        code_snippet=task_data["code_snippet"],
-                        instructions=task_data["instructions"],
-                        todos=task_data["todos"],
-                        concept_examples=None,
-                        filename=task_data["filename"]
-                    ))
-
-                logger.info(f"Successfully generated {len(results)} tasks for {filename}")
-                return results
+                raise ValueError("Missing code_snippet or task_todos")
 
             except Exception as e:
                 last_error = e
-                error_msg = str(e)
-                logger.warning(f"File codegen attempt {attempt + 1} failed: {error_msg}")
-
+                logger.warning(f"Attempt {attempt + 1} failed: {e}")
                 if attempt < self.max_retries - 1:
-                    # Provide specific guidance based on error type
-                    if "missing 'tasks' field" in error_msg.lower():
-                        prompt += f"\n\nCRITICAL ERROR: Your response MUST have a 'tasks' array at the top level. Structure: {{\"tasks\": [{{task1}}, {{task2}}, ...]}}. Generate ALL {len(tasks)} tasks inside the array."
-                    else:
-                        prompt += f"\n\nIMPORTANT: Previous attempt failed: {error_msg}. Ensure response is ONLY valid JSON with all {len(tasks)} tasks in a 'tasks' array."
-                continue
+                    continue
 
         logger.error(f"All {self.max_retries} attempts failed for {filename}")
-        raise ValueError(f"Failed to generate scaffolding for {filename} after {self.max_retries} attempts: {str(last_error)}")
+        raise ValueError(f"Failed to generate scaffolding for {filename}: {str(last_error)}")
+
 
 codegen_agent = None
 def get_batch_codegen_agent() -> CodegenAgent:

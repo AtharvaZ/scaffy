@@ -40,10 +40,40 @@ class AnthropicClient:
                     max_tokens=max_tokens,
                     messages=[{"role": "user", "content": prompt}]
                 )
-                
+
+                # Get response text
+                response_text = response.content[0].text
+
+                # Check for truncation or incomplete response
+                if response.stop_reason == "max_tokens":
+                    logger.warning(f"Response truncated (hit max_tokens limit of {max_tokens})")
+                    logger.warning(f"Response length: {len(response_text)} characters")
+                    # Continue anyway, but log the warning
+
+                # Check for obviously incomplete code (methods outside classes)
+                if "// =====" in response_text and "public class" in response_text:
+                    # Quick heuristic: if we see task comments outside class blocks, response is malformed
+                    lines = response_text.split('\n')
+                    class_depth = 0
+                    for line in lines:
+                        if 'public class' in line or 'class ' in line:
+                            class_depth += line.count('{') - line.count('}')
+                        elif class_depth == 0 and ('public void' in line or 'private void' in line):
+                            logger.error("DETECTED MALFORMED CODE: Methods outside class boundaries!")
+                            logger.error(f"This usually means API response was truncated or rate limited")
+
+                            # Treat malformed response as retryable error
+                            if attempt < self.max_retries - 1:
+                                delay = self._calculate_backoff(attempt)
+                                logger.info(f"Retrying due to malformed response in {delay} seconds...")
+                                time.sleep(delay)
+                                continue  # Skip to next retry attempt
+                            else:
+                                raise ValueError("Generated code is malformed - methods outside classes detected after max retries")
+
                 logger.info(f"API call succeeded on attempt {attempt + 1}")
-                return response.content[0].text
-                
+                return response_text
+
             except anthropic.RateLimitError as e:
                 last_exception = e
                 logger.warning(f"Rate limit hit on attempt {attempt + 1}: {e}")

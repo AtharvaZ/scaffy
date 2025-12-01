@@ -154,8 +154,10 @@ class ParserAgent:
                     logger.info(f"    Purpose: {file_data.get('purpose', 'N/A')}")
 
                     # Check if file has classes
-                    classes = file_data.get('classes', [])
-                    if classes:
+                    classes = file_data.get('classes')
+                    tasks = file_data.get('tasks')
+
+                    if classes is not None and len(classes) > 0:
                         logger.info(f"    Classes: {len(classes)} detected")
                         for class_idx, cls in enumerate(classes, 1):
                             class_name = cls.get('class_name', 'Unknown')
@@ -164,10 +166,9 @@ class ParserAgent:
                             logger.info(f"        Purpose: {cls.get('purpose', 'N/A')}")
                             logger.info(f"        Method Signatures: {method_sigs}")
                             logger.info(f"        Tasks: {len(cls.get('tasks', []))}")
-                    else:
-                        # Simple file with tasks
-                        tasks = file_data.get('tasks', [])
-                        logger.info(f"    Simple file with {len(tasks)} tasks (no classes)")
+                    elif tasks is not None and len(tasks) > 0:
+                        # Simple file with tasks (could be code file or data file)
+                        logger.info(f"    Tasks: {len(tasks)}")
                 logger.info("=" * 80)
 
                 validate_task_breakdown(data)

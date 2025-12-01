@@ -197,6 +197,7 @@ export async function parseAndScaffold(
           }
         }
       }
+      // Note: All files (code and data) should have tasks for proper tracking
     }
   } else if (taskBreakdown.tasks) {
     // Legacy format - single file
@@ -286,22 +287,20 @@ export async function parseAndScaffold(
     const commentSyntax = getCommentSyntax(targetLanguage);
 
     // Group code snippets by filename
+    // IMPORTANT: Backend returns N tasks where each code_snippet contains the COMPLETE file.
+    // We only need the FIRST code_snippet for each file to avoid duplication.
     const fileContents: Record<string, string> = {};
-    starterCodes.forEach((code, index) => {
+    starterCodes.forEach((code) => {
       const filename = code.filename;
-      const taskNumber = index + 1;
-      const taskTitle = allTasksWithFiles[index].task.title;
-      const taskHeader = commentSyntax.end
-        ? `${commentSyntax.start} ===== TASK ${taskNumber}: ${taskTitle} ===== ${commentSyntax.end}`
-        : `${commentSyntax.start} ===== TASK ${taskNumber}: ${taskTitle} =====`;
-      const taskCode = `${taskHeader}\n${code.code_snippet}`;
 
-      if (fileContents[filename]) {
-        fileContents[filename] += `\n\n${taskCode}`;
-      } else {
-        fileContents[filename] = taskCode;
+      // Only use the first task's code for each file (it already contains all tasks integrated)
+      if (!fileContents[filename]) {
+        fileContents[filename] = code.code_snippet;
       }
     });
+
+    // Note: All files (code and data) are now handled by the backend code generation
+    // Data files will have their own tasks and generated content just like code files
 
     // For single-file view in editor, combine all files
     const combinedCode = Object.entries(fileContents)
