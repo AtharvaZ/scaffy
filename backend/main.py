@@ -48,7 +48,7 @@ from agents.live_helper import LiveHelperAgent
 from agents.concept_example import ConceptExampleAgent
 from services.code_runner import get_code_runner
 from services.pdf_extractor import get_pdf_extractor
-from services.email_service import get_email_service
+from services.resend_email_service import get_resend_email_service
 
 load_dotenv()
 
@@ -467,15 +467,13 @@ async def generate_tests(request: GenerateTestsRequest):
 @app.post("/send-feedback", response_model=FeedbackResponse)
 async def send_feedback(request: FeedbackRequest):
     """
-    Send user feedback via email
-    
-    Sends feedback to the configured email address (atharvazaveri4@gmail.com)
+    Send user feedback via email using Resend API
     """
     try:
         logger.info(f"Received feedback from {request.name} ({request.email})")
         
-        email_service = get_email_service()
-        success = email_service.send_feedback(
+        resend_service = get_resend_email_service()
+        success = resend_service.send_feedback(
             name=request.name,
             email=request.email,
             feedback=request.feedback
