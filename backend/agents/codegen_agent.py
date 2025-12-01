@@ -17,31 +17,26 @@ def validate_no_duplication(code_snippet: str, class_names: list) -> bool:
         return True  # No classes to check
 
     for class_name in class_names:
-        # Check for class declarations (handles different language syntaxes)
-        patterns = [
-            f"class {class_name}",  # Python, C#, Java
-            f"public class {class_name}",  # C#, Java
-            f"private class {class_name}",  # C#, Java
-            f"protected class {class_name}",  # C#, Java
-        ]
-
-        total_count = 0
-        matched_patterns = []
-        for pattern in patterns:
-            count = code_snippet.count(pattern)
-            if count > 0:
-                matched_patterns.append(f"{pattern} ({count}x)")
-                total_count += count
-
-        if total_count > 1:
-            logger.error(f"Class {class_name} appears {total_count} times - DUPLICATION DETECTED!")
-            logger.error(f"Matched patterns: {', '.join(matched_patterns)}")
+        # Use regex to find actual class declarations (not overlapping patterns)
+        import re
+        
+        # Pattern matches: (public|private|protected)? class ClassName
+        # This handles C#, Java, Python, etc.
+        pattern = rf'\b(?:public\s+|private\s+|protected\s+)?class\s+{re.escape(class_name)}\b'
+        
+        matches = re.findall(pattern, code_snippet, re.IGNORECASE)
+        count = len(matches)
+        
+        if count > 1:
+            logger.error(f"Class {class_name} appears {count} times - DUPLICATION DETECTED!")
             # Find line numbers where class appears
             lines = code_snippet.split('\n')
             for i, line in enumerate(lines, 1):
-                if any(pattern in line for pattern in patterns):
+                if re.search(pattern, line, re.IGNORECASE):
                     logger.error(f"  Line {i}: {line.strip()}")
             return False
+        elif count == 0:
+            logger.warning(f"Class {class_name} not found in generated code!")
     
     # Also check for namespace/package duplication
     namespace_count = code_snippet.count("namespace ConsoleApp1")
@@ -121,16 +116,22 @@ class CodegenAgent:
             )
 
         # Smart token allocation for new compact format
-        # New format: ONE code_snippet + task_todos dict (much more compact!)
-        base_tokens = 1000  # Increased base for file scaffolding
-        per_task = 100  # Reduced - we only need todos, not full code per task
-        per_class = 400 if class_structure else 0
+        # Data files need MORE tokens than code files (XML/JSON content is verbose)
+        if is_non_code_file:
+            # Data files: allocate generously since they contain actual content
+            base_tokens = 3000
+            per_task = 500  # Data files can be large
+            max_tokens = min(base_tokens + (len(tasks) * per_task), 8000)
+        else:
+            # Code files: more generous allocation for quality
+            base_tokens = 2000  # Increased from 1000
+            per_task = 200  # Increased from 100 - each task needs method + TODOs
+            per_class = 600 if class_structure else 0  # Increased from 400
+            estimated_tokens = base_tokens + (len(tasks) * per_task)
+            if class_structure:
+                estimated_tokens += len(class_structure) * per_class
+            max_tokens = min(estimated_tokens, 8000)
 
-        estimated_tokens = base_tokens + (len(tasks) * per_task)
-        if class_structure:
-            estimated_tokens += len(class_structure) * per_class
-
-        max_tokens = min(estimated_tokens, 8000)  # Increased cap for complex files
         logger.info(f"Using {max_tokens} tokens for {len(tasks)} tasks in {filename}")
 
         # ADD THIS: Extra instruction for complex files
@@ -169,13 +170,33 @@ class CodegenAgent:
                             logger.error("=" * 80)
                             raise ValueError("Class duplication detected")
 
+                    # Validate TODO counts per experience level
+                    experience_level = tasks_dict_list[0].get('experience_level', 'intermediate')
+                    todo_ranges = {
+                        'beginner': (5, 8),
+                        'intermediate': (3, 5),
+                        'advanced': (1, 3)
+                    }
+                    min_todos, max_todos = todo_ranges.get(experience_level, (3, 5))
+
                     # Expand into N task objects
                     results = []
                     for i, task in enumerate(tasks, 1):
+                        todos = task_todos.get(str(i), [])
+
+                        # Validate TODO count for this task
+                        if len(todos) < min_todos:
+                            logger.error(f"❌ Task {i} has {len(todos)} TODOs, expected {min_todos}-{max_todos} for {experience_level} level")
+                            logger.error(f"   Task description: {task.task_description}")
+                            logger.error(f"   This indicates the AI didn't follow TODO generation guidelines")
+                            # Don't fail, but log prominently
+                        elif len(todos) > max_todos:
+                            logger.warning(f"⚠️  Task {i} has {len(todos)} TODOs, expected {min_todos}-{max_todos} for {experience_level} level")
+
                         results.append(StarterCode(
                             code_snippet=code,  # Same for all
                             instructions=f"Task {i}: {task.task_description}",
-                            todos=task_todos.get(str(i), []),
+                            todos=todos,
                             concept_examples=None,
                             filename=filename
                         ))
@@ -192,7 +213,47 @@ class CodegenAgent:
                     continue
 
         logger.error(f"All {self.max_retries} attempts failed for {filename}")
-        raise ValueError(f"Failed to generate scaffolding for {filename}: {str(last_error)}")
+        logger.warning(f"Falling back to basic scaffolding for {filename}")
+
+        # Fallback: Generate basic scaffolding manually
+        return self._generate_fallback_scaffolding(filename, tasks, tasks_dict_list)
+
+    def _generate_fallback_scaffolding(self, filename: str, tasks, tasks_dict_list) -> List[StarterCode]:
+        """
+        Generate basic scaffolding when AI generation fails
+        """
+        logger.info(f"Generating fallback scaffolding for {filename}")
+
+        # Get language info
+        language = tasks_dict_list[0].get('programming_language', 'python').lower()
+        comment_style = '#' if language in ['python', 'bash', 'shell', 'ruby'] else '//'
+
+        # Generate basic code structure
+        code_lines = [f"{comment_style} File: {filename}"]
+        code_lines.append(f"{comment_style} Auto-generated fallback scaffolding")
+        code_lines.append("")
+
+        # Add TODOs for each task
+        for i, task_dict in enumerate(tasks_dict_list, 1):
+            code_lines.append(f"{comment_style} Task {i}: {task_dict['task_description']}")
+            code_lines.append(f"{comment_style} TODO: Implement this task")
+            code_lines.append("")
+
+        code_snippet = "\n".join(code_lines)
+
+        # Create results with basic TODOs
+        results = []
+        for i in range(len(tasks)):
+            results.append(StarterCode(
+                code_snippet=code_snippet,
+                instructions=f"Task {i+1}: {tasks_dict_list[i]['task_description']}",
+                todos=[f"Implement {tasks_dict_list[i]['task_description']}"],
+                concept_examples=None,
+                filename=filename
+            ))
+
+        logger.info(f"Fallback scaffolding generated with {len(results)} tasks")
+        return results
 
 
 codegen_agent = None

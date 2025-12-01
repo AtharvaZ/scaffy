@@ -16,7 +16,7 @@ class TaskSchema(BaseModel):
     id: int
     title: str
     description: str
-    dependencies: List[int]
+    dependencies: List[int] = []  # Default to empty list if not provided
     estimated_time: str
     concepts: List[str]
     template_variables: Optional[List[str]] = None  # NEW: for template preservation

@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { MessageSquare } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { EncryptedText } from '../components/ui/encrypted-text';
 import { CodeBreakdownAnimation } from '../components/CodeBreakdownAnimation';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 export function LandingPage() {
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
@@ -14,7 +19,14 @@ export function LandingPage() {
             <Link to="/" className="flex items-center">
               <span className="text-xl font-semibold text-black dark:text-white">Scaffi</span>
             </Link>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">Feedback</span>
+              </button>
               <DarkModeToggle />
               <Link to="/task">
                 <Button size="sm" className="h-8 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 text-[13px] px-4 font-medium shadow-md shadow-blue-500/20">
@@ -289,6 +301,9 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Feedback Modal */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 }

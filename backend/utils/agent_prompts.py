@@ -71,6 +71,57 @@ CRITICAL - Detecting if code will have Main method:
 - Kernel modules, drivers → Will have Main/init, use function_name: "Main"
 - Simple utility functions → NO Main, use function_name: "ClassName.MethodName" or just "MethodName"
 
+CRITICAL - HANDLING LONG-RUNNING PROGRAMS:
+⚠️ The test runner has a 30-second timeout limit. Programs that run longer will be terminated.
+
+For assignments with threading, async operations, or simulations:
+1. **Modify the program to run briefly** - Add early termination logic
+2. **Test observable behavior quickly** - Check output within first few seconds
+3. **Use time-limited tests** - Test that threads START, not that they run forever
+
+EXAMPLES OF TIME-LIMITED TESTS:
+
+❌ BAD (will timeout):
+{{
+  "test_name": "test_infinite_producer_consumer",
+  "function_name": "Main",
+  "expected_output": "CONTAINS:Producer,Consumer,produced 1000 items"
+}}
+Problem: If program runs forever or takes >30s, test will timeout
+
+✅ GOOD (completes quickly):
+{{
+  "test_name": "test_producer_consumer_starts",
+  "function_name": "Main",
+  "expected_output": "CONTAINS:Producer started,Consumer started,produced,consumed"
+}}
+Solution: Test that threads START and produce SOME output, not that they complete fully
+
+STRATEGIES FOR LONG-RUNNING PROGRAMS:
+
+1. **Threading/Async Programs:**
+   - Test that threads/tasks are created
+   - Test that initial output appears
+   - Don't test completion if program runs indefinitely
+   - Example: "CONTAINS:Thread 1 started,Thread 2 started,Processing"
+
+2. **Simulations/Loops:**
+   - Test first few iterations only
+   - Test that loop starts and produces output
+   - Don't test final state if it takes >30s
+   - Example: "CONTAINS:Iteration 1,Iteration 2,Iteration 3"
+
+3. **Server/Daemon Programs:**
+   - Test that server starts
+   - Test initial connection/setup
+   - Don't test long-running behavior
+   - Example: "CONTAINS:Server started,Listening on port"
+
+4. **Programs with Sleep/Delay:**
+   - Assume student will use SHORT delays for testing
+   - Test observable behavior within first 5-10 seconds
+   - Example: If program sleeps 1s between iterations, test first 5 iterations
+
 C#/Java Test Decision Tree:
 1. Simple function (pure, stateless) → Direct call: `var result = FunctionName(input);`
 2. Class with state → Instantiate and test: `var obj = new ClassName(); obj.Method(); Console.WriteLine(obj.Property);`
@@ -85,6 +136,14 @@ For threading/concurrent assignments in C#/Java:
   * Expected number of messages
   * Synchronization correctness (no race conditions in output)
   * Completion markers ("All producers finished", etc.)
+
+⚠️ TIMEOUT CONSTRAINT:
+- Test runner has 30-second limit
+- For programs with infinite loops or long-running threads:
+  * Test INITIAL behavior (first 5-10 seconds)
+  * Use CONTAINS: patterns to check for expected output
+  * Don't require program completion
+  * Example: Instead of "All 1000 items processed", use "CONTAINS:Processing,Item 1,Item 2"
 
 FUNCTION NAME INFERENCE:
 - Look for explicit function names in the assignment (e.g., "Write a function called reverse_string")
@@ -113,6 +172,17 @@ Example 2 - C# threading assignment (observable behavior test):
   "test_type": "normal"
 }}
 Note: Use "CONTAINS:word1,word2,word3" format for tests that check if output contains certain patterns
+
+Example 2b - Long-running threading program (time-limited test):
+{{
+  "test_name": "test_hotel_booking_threads_start",
+  "function_name": "Main",
+  "input_data": "",
+  "expected_output": "CONTAINS:Travel Agent,Hotel,Order,room",
+  "description": "Verify hotel booking system starts threads and begins processing (tests first 10 seconds only)",
+  "test_type": "normal"
+}}
+Note: For programs that may run >30s, test INITIAL behavior only, not completion
 
 Example 3 - C# class method test (with namespace):
 {{
@@ -302,7 +372,27 @@ YOUR JOB:
 1. Identify ALL files mentioned (code files, data files, config files, etc.)
 2. For each file, create tasks that the student needs to complete
 3. Break complex implementations into 20-40 minute chunks
-4. Extract template variables/method names if template code is provided
+4. Detect if template/boilerplate code is provided in the assignment
+
+TEMPLATE DETECTION:
+- Template code = starter code provided in the assignment that students must complete
+- Look for code blocks, class definitions, method signatures in the assignment text
+- If you find template code:
+  * Set has_template: true
+  * Extract exact class names: ["ClassName1", "ClassName2"]
+  * Extract exact variable names that should be preserved
+  * Extract method signatures at GLOBAL level (functions not in classes): ["methodName(param1, param2)"]
+  * ALSO extract method signatures PER CLASS (see below)
+- If NO template code is provided:
+  * Set has_template: false
+  * Leave arrays empty
+  * Students will build from scratch
+
+CRITICAL - METHOD SIGNATURE ASSIGNMENT:
+- If template provides methods INSIDE a class, put them in that class's "method_signatures" array
+- If template provides global functions (not in any class), put them in template_structure.method_signatures
+- Example: If you see "class Hotel {{ void UpdatePrice() {{...}} }}", put "UpdatePrice()" in Hotel's method_signatures
+- This helps preserve the exact structure students need to complete
 
 TASK BREAKDOWN STRATEGY:
 - Code files: Break into logical implementation tasks (setup, core logic, error handling, etc.)
@@ -357,6 +447,40 @@ KEY RULES:
 4. NEVER have both "classes" and "tasks" in the same file
 5. Dependencies are INTEGERS (task IDs), not strings: [1, 2] not ["Task 1"]
 6. Include ALL files mentioned in assignment (don't skip data/config files)
+7. CRITICAL: Assign method_signatures to the CLASS they belong to, NOT globally
+
+EXAMPLE - Correct Method Signature Assignment:
+If template provides:
+```
+class Hotel {{
+  void UpdatePrice() {{ }}
+  void ProcessOrder() {{ }}
+}}
+class TravelAgent {{
+  void CreateOrder() {{ }}
+}}
+```
+
+Correct output:
+{{
+  "template_structure": {{
+    "has_template": true,
+    "class_names": ["Hotel", "TravelAgent"],
+    "method_signatures": []  // Empty - all methods belong to classes
+  }},
+  "files": [{{
+    "classes": [
+      {{
+        "class_name": "Hotel",
+        "method_signatures": ["UpdatePrice()", "ProcessOrder()"]  // Hotel's methods HERE
+      }},
+      {{
+        "class_name": "TravelAgent",
+        "method_signatures": ["CreateOrder()"]  // TravelAgent's methods HERE
+      }}
+    ]
+  }}]
+}}
 
 Return ONLY valid JSON."""
 
@@ -686,9 +810,15 @@ def get_non_code_file_prompt(tasks_data: list, filename: str) -> str:
         file_type = ext.upper() if ext else "file"
         guidance = "Generate appropriate content for this file format"
 
-    return f"""Generate content for {file_type}: {filename}
+    return f"""Generate MINIMAL starter content for {file_type}: {filename}
 
 TASKS:{tasks_description}
+
+IMPORTANT - KEEP IT SHORT:
+- Generate only 2-3 sample entries (NOT 10+)
+- Keep total content under 50 lines
+- Students will expand this file themselves
+- Focus on demonstrating structure, not filling with data
 
 CRITICAL INSTRUCTIONS:
 1. Generate the ACTUAL {file_type} content - NOT code to create it
@@ -699,13 +829,27 @@ CRITICAL INSTRUCTIONS:
 6. For Makefiles: Use TABS (\\t) for indentation, not spaces
 7. Make it ready to use with minimal modifications
 
-JSON OUTPUT (NO ```):
+JSON OUTPUT FORMAT (CRITICAL):
+- NO markdown code blocks (no ```)
+- Escape ALL newlines as \\n
+- Escape ALL tabs as \\t
+- Escape ALL quotes as \\"
+- The entire file content must be on ONE LINE in the JSON string
+
+CORRECT EXAMPLE:
 {{
-  "code_snippet": "complete file content here with \\n for newlines (use \\t for tabs in Makefiles)",
+  "code_snippet": "<?xml version=\\"1.0\\"?>\\n<hotels>\\n  <hotel>\\n    <name>Grand Hotel</name>\\n  </hotel>\\n</hotels>",
   "task_todos": {{
     "1": ["Review and customize as needed", "Test functionality"]
   }}
-}}"""
+}}
+
+WRONG (will fail):
+{{
+  "code_snippet": "<?xml version=\\"1.0\\"?>
+<hotels>
+  <hotel>
+"""
 
 
 def get_file_codegen_prompt(tasks_data: list, filename: str,
@@ -733,7 +877,13 @@ def get_file_codegen_prompt(tasks_data: list, filename: str,
 Task {i}: {task['task_description']}
   Class: {task.get('class_name', 'Program')}
   Concepts: {', '.join(task.get('concepts', []))}
-  Experience: {task.get('experience_level', 'intermediate')}"""
+  Experience: {task.get('experience_level', 'intermediate')}
+  
+  WHAT TO IMPLEMENT:
+  - Read the task description carefully
+  - Create method(s) that accomplish this specific task
+  - Add TODOs inside the method body based on experience level
+  - Ensure the method signature matches what the task requires"""
         if task.get('template_variables'):
             tasks_description += f"\n  Preserve variables: {', '.join(task['template_variables'])}"
 
@@ -772,6 +922,13 @@ Task {i}: {task['task_description']}
 
     return f"""Generate scaffolding code for: {filename}
 
+CRITICAL INSTRUCTIONS:
+- You are creating STARTER CODE for students to complete
+- Generate syntactically valid code with EMPTY method bodies
+- Place TODOs inside methods to guide students
+- Do NOT implement the full logic - students will do that
+- Focus on creating the right structure and clear guidance
+
 ASSIGNMENT TASKS:{tasks_description}
 {structure_section}
 {template_section}
@@ -779,27 +936,51 @@ ASSIGNMENT TASKS:{tasks_description}
 REQUIREMENTS:
 1. Language: {language}
 2. Comment style: {comment_style} for all TODOs
-3. Generate ONE complete, compilable file - each class appears EXACTLY ONCE
-4. Include method signatures but NOT implementations
-5. {lang_specific}
+3. Generate ONE complete file with SCAFFOLDING CODE - each class appears EXACTLY ONCE
+4. Include method signatures with EMPTY bodies containing TODOs (NOT full implementations)
+5. The code should be SYNTACTICALLY VALID but NOT functionally complete
+6. {lang_specific}
 
 CRITICAL - AVOID DUPLICATION:
 - Each class declaration must appear EXACTLY ONCE in code_snippet
 - Do NOT repeat class declarations in comments or examples
 - If the file has "class Program", it should appear exactly 1 time in the entire code
 
-TODO GUIDELINES BY EXPERIENCE:
-- Beginner: 5-8 detailed TODOs per task with step-by-step guidance
-  Example: "{comment_style} TODO: Create a variable to store the result"
-           "{comment_style} TODO: Loop through each item in the list"
-           "{comment_style} TODO: Check if the item meets the condition"
+TODO GUIDELINES BY EXPERIENCE (CRITICAL - Follow exactly):
 
-- Intermediate: 3-5 moderate TODOs per task with clear sections
-  Example: "{comment_style} TODO: Implement input validation"
-           "{comment_style} TODO: Process the data and compute result"
+BEGINNER (5-8 TODOs per task):
+- Break down EVERY step of the implementation
+- Include TODOs for variable declarations, loops, conditionals, return statements
+- Use simple, instructional language
+- Example for "validate input" task:
+  {comment_style} TODO: Check if input is null or empty
+  {comment_style} TODO: Check if input length is within valid range (1-100)
+  {comment_style} TODO: Check if input contains only allowed characters
+  {comment_style} TODO: If any validation fails, return false
+  {comment_style} TODO: If all validations pass, return true
 
-- Advanced: 1-3 high-level TODOs per task
-  Example: "{comment_style} TODO: Implement the algorithm"
+INTERMEDIATE (3-5 TODOs per task):
+- Group related steps into logical sections
+- Assume basic programming knowledge
+- Focus on the main logic blocks
+- Example for "validate input" task:
+  {comment_style} TODO: Validate input is not null/empty and within length limits
+  {comment_style} TODO: Check input contains only allowed characters
+  {comment_style} TODO: Return validation result
+
+ADVANCED (1-3 TODOs per task):
+- High-level implementation goals only
+- Assume strong programming skills
+- Minimal guidance
+- Example for "validate input" task:
+  {comment_style} TODO: Implement input validation logic
+  {comment_style} TODO: Return validation result
+
+PLACEMENT RULES:
+- Place TODOs INSIDE method bodies where code should be written
+- Do NOT put TODOs in class declarations or import statements
+- Each TODO should describe ONE specific action to take
+- TODOs should be ordered in the sequence they need to be implemented
 
 SPECIAL HANDLING:
 
@@ -830,5 +1011,14 @@ JSON OUTPUT (NO ```):
     "1": ["todo for task 1", "another todo for task 1"],
     "2": ["todo for task 2", "another todo for task 2"],
     "3": ["todo for task 3"]
+  }}
+}}
+
+EXAMPLE OUTPUT (Python, Beginner level, 2 tasks):
+{{
+  "code_snippet": "# File: string_utils.py\\n\\ndef reverse_string(text):\\n    # TODO: Check if text is None or empty\\n    # TODO: Create an empty result variable\\n    # TODO: Loop through text from end to start\\n    # TODO: Add each character to result\\n    # TODO: Return the result\\n    pass\\n\\ndef count_vowels(text):\\n    # TODO: Create a variable to count vowels\\n    # TODO: Define which characters are vowels\\n    # TODO: Loop through each character in text\\n    # TODO: Check if character is a vowel\\n    # TODO: If yes, increment the counter\\n    # TODO: Return the counter\\n    pass",
+  "task_todos": {{
+    "1": ["Check if text is None or empty", "Create an empty result variable", "Loop through text from end to start", "Add each character to result", "Return the result"],
+    "2": ["Create a variable to count vowels", "Define which characters are vowels", "Loop through each character in text", "Check if character is a vowel", "If yes, increment the counter", "Return the counter"]
   }}
 }}"""

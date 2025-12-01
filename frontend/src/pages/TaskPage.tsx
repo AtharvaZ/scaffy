@@ -7,7 +7,8 @@ import { parseAndScaffold, getConceptExample } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
 import { DarkModeToggle } from "../components/DarkModeToggle";
-import { ArrowRight, Loader2, Eye, X, Lightbulb, AlertTriangle } from "lucide-react";
+import { FeedbackModal } from "../components/FeedbackModal";
+import { ArrowRight, Loader2, Eye, X, Lightbulb, AlertTriangle, MessageSquare } from "lucide-react";
 
 export function TaskPage() {
   const navigate = useNavigate();
@@ -29,6 +30,9 @@ export function TaskPage() {
     setIsLoading,
     setError,
   } = useAppStore();
+
+  // Feedback modal state
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Check if we already have a scaffold loaded (coming back from editor)
   const [hasSubmitted, setHasSubmitted] = useState(
@@ -246,7 +250,14 @@ export function TaskPage() {
                 Scaffi
               </span>
             </Link>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">Feedback</span>
+              </button>
               <DarkModeToggle />
               <Button
                 variant="ghost"
@@ -587,6 +598,9 @@ export function TaskPage() {
           </div>
         )}
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 }

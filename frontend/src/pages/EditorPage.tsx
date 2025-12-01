@@ -10,13 +10,14 @@ import { GetHint } from "../components/GetHint";
 import { GetConceptExample } from "../components/GetConceptExample";
 import { TodoList } from "../components/TodoList";
 import { DarkModeToggle } from "../components/DarkModeToggle";
+import { FeedbackModal } from "../components/FeedbackModal";
 import { TestCaseResults } from "../components/TestCaseResults";
 import { TestCasesPanel } from "../components/TestCasesPanel";
 import { FileSelector } from "../components/FileSelector";
 import { runCode, generateTestsFromCode } from "../api/endpoints";
 import { safeApiCall } from "../api/client";
 import { Button } from "../components/ui/button";
-import { ArrowLeft, Lightbulb, Code2, Trash2, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Lightbulb, Code2, Trash2, X, Sparkles, MessageSquare } from "lucide-react";
 import { AutoSaveIndicator } from "../components/SaveIndicator";
 
 export function EditorPage() {
@@ -65,6 +66,7 @@ export function EditorPage() {
   const [selectedTaskForExamples, setSelectedTaskForExamples] = useState<number | undefined>(undefined);
   const [lastTestResults, setLastTestResults] = useState<any[] | null>(null);
   const [isGeneratingTests, setIsGeneratingTests] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Track previous currentFile to detect changes
   const prevCurrentFileRef = useRef<string | null>(null);
@@ -384,6 +386,13 @@ export function EditorPage() {
             </div>
             <div className="flex items-center gap-4">
               <AutoSaveIndicator hasUnsavedChanges={false} />
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">Feedback</span>
+              </button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -714,6 +723,9 @@ export function EditorPage() {
           </div>
         )}
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 }

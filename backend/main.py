@@ -189,6 +189,26 @@ async def generate_starter_code_bacth(request: BatchBoilerPlateCodeSchema):
             if file_data['class_structure']:
                 logger.info(f"    Classes: {', '.join(file_data['class_structure'].keys())}")
 
+        # Validate class-task distribution before generation
+        for filename, file_data in files_map.items():
+            class_structure = file_data['class_structure']
+            if class_structure:
+                # Check for imbalanced distribution
+                tasks_per_class = {cls: len(tasks) for cls, tasks in class_structure.items()}
+                max_tasks = max(tasks_per_class.values())
+                min_tasks = min(tasks_per_class.values())
+
+                if max_tasks > min_tasks * 3:
+                    logger.warning(f"⚠️  {filename}: Imbalanced task distribution across classes")
+                    for cls, count in tasks_per_class.items():
+                        logger.warning(f"    {cls}: {count} tasks")
+
+                # Check for empty classes
+                for cls, task_list in class_structure.items():
+                    if len(task_list) == 0:
+                        logger.error(f"❌ {filename}: Class '{cls}' has no tasks assigned!")
+                        raise ValueError(f"Class '{cls}' in {filename} has no tasks. Each class must have at least one task.")
+
         # Generate scaffolding per file
         all_results = []
 

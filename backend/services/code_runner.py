@@ -14,8 +14,13 @@ class CodeRunner:
     def __init__(self):
         # Use public Piston API or set your own instance URL via environment variable
         self.piston_api_url = os.getenv("PISTON_API_URL", "https://emkc.org/api/v2/piston")
-        self.timeout = 30  # 30 second timeout (increased for complex programs with threading)
+        self.timeout = 30  # 30 second timeout (Piston API limit)
         self.max_output_length = 10000  # Limit output to prevent memory issues
+        
+        # Note: Piston API has hard limits:
+        # - 30 second execution timeout
+        # - Programs that run longer will be terminated
+        # - For long-running programs, tests should check INITIAL behavior only
         
         # Language mappings for Piston API
         self.language_map = {
@@ -30,6 +35,81 @@ class CodeRunner:
             'c': 'c',
             'typescript': 'typescript'
         }
+    
+    def _inject_timeout_handling(self, code: str, language: str, timeout_seconds: int = 10) -> str:
+        """
+        Inject timeout handling into student code for testing long-running programs.
+        
+        This modifies the code to terminate after a specified time, allowing tests
+        to check initial behavior without hitting the 30-second Piston limit.
+        
+        Args:
+            code: Student's code
+            language: Programming language
+            timeout_seconds: How long to let the program run (default 10s)
+            
+        Returns:
+            Modified code with timeout handling
+        """
+        language = language.lower()
+        
+        # Only inject for languages where we can easily add timeout logic
+        if language in ['csharp', 'c#', 'cs']:
+            # For C#, add a timer that sets a flag after timeout_seconds
+            # Look for Main method and inject timeout logic
+            if 'static void Main' in code or 'static async Task Main' in code:
+                # Add using statements if not present
+                if 'using System.Threading;' not in code:
+                    code = 'using System.Threading;\n' + code
+                if 'using System.Timers;' not in code:
+                    code = 'using System.Timers;\n' + code
+                
+                # Add a global flag and timer setup
+                # Find the class containing Main
+                lines = code.split('\n')
+                main_class_index = -1
+                for i, line in enumerate(lines):
+                    if 'static void Main' in line or 'static async Task Main' in line:
+                        # Find the class declaration before this
+                        for j in range(i-1, -1, -1):
+                            if 'class ' in lines[j]:
+                                main_class_index = j
+                                break
+                        break
+                
+                if main_class_index >= 0:
+                    # Inject timeout flag and timer
+                    timeout_code = f"""
+    // AUTO-INJECTED: Timeout handling for testing (program will stop after {timeout_seconds} seconds)
+    private static bool _testTimeoutReached = false;
+    private static System.Timers.Timer _testTimer = new System.Timers.Timer({timeout_seconds * 1000});
+    
+    static void InitTestTimeout() {{
+        _testTimer.Elapsed += (sender, e) => {{
+            _testTimeoutReached = true;
+            _testTimer.Stop();
+            Console.WriteLine("\\n[TEST TIMEOUT REACHED - Program terminated for testing]");
+            Environment.Exit(0);
+        }};
+        _testTimer.Start();
+    }}
+"""
+                    # Insert after class declaration
+                    lines.insert(main_class_index + 1, timeout_code)
+                    
+                    # Find Main method and add InitTestTimeout() call at the start
+                    for i, line in enumerate(lines):
+                        if 'static void Main' in line or 'static async Task Main' in line:
+                            # Find the opening brace
+                            for j in range(i, len(lines)):
+                                if '{' in lines[j]:
+                                    lines.insert(j + 1, '        InitTestTimeout(); // Start test timeout timer')
+                                    break
+                            break
+                    
+                    code = '\n'.join(lines)
+        
+        return code
     
     def _check_output_match(self, actual_output: str, expected_output: str) -> bool:
         """
@@ -196,7 +276,7 @@ class CodeRunner:
                 "execution_time": "error"
             }
 
-    def run_with_tests(self, code: str, language: str, test_cases: list) -> Dict[str, Any]:
+    def run_with_tests(self, code: str, language: str, test_cases: list, inject_timeout: bool = False) -> Dict[str, Any]:
         """
         Run code with test cases and return results
 
@@ -204,6 +284,7 @@ class CodeRunner:
             code: Student's code
             language: Programming language
             test_cases: List of test case dicts with function_name, input_data, expected_output
+            inject_timeout: If True, inject timeout handling for long-running programs (default False)
 
         Returns:
             Dict with test_results, tests_passed, tests_failed, plus regular execution info
@@ -216,6 +297,12 @@ class CodeRunner:
             tests_failed = 0
 
             logger.info(f"Running {len(test_cases)} test cases for {language} code")
+            
+            # Optionally inject timeout handling for long-running programs
+            base_code = code
+            if inject_timeout:
+                logger.info("Injecting timeout handling for long-running program testing")
+                base_code = self._inject_timeout_handling(code, language, timeout_seconds=10)
 
             for test_case in test_cases:
                 try:
@@ -226,19 +313,19 @@ class CodeRunner:
 
                     # Generate test code based on language
                     if language.lower() == 'python':
-                        test_code = f"{code}\n\n# Test execution\nresult = {function_name}({input_data})\nprint(result)"
+                        test_code = f"{base_code}\n\n# Test execution\nresult = {function_name}({input_data})\nprint(result)"
                     elif language.lower() in ['javascript', 'js']:
-                        test_code = f"{code}\n\n// Test execution\nconst result = {function_name}({input_data});\nconsole.log(result);"
+                        test_code = f"{base_code}\n\n// Test execution\nconst result = {function_name}({input_data});\nconsole.log(result);"
                     elif language.lower() in ['csharp', 'c#', 'cs']:
                         # For C#, check if code already has Main method
-                        has_main = 'static void Main' in code or 'static async Task Main' in code
+                        has_main = 'static void Main' in base_code or 'static async Task Main' in base_code
 
                         if function_name.lower() == 'main' and has_main:
                             # Integration test - code already has Main, just run it
-                            test_code = code
+                            test_code = base_code
                         elif function_name.lower() == 'main' and not has_main:
                             # Need to add Main method to call the function
-                            test_code = f"""{code}
+                            test_code = f"""{base_code}
 
 // Test execution
 class TestRunner {{
@@ -267,10 +354,10 @@ class TestRunner {{
                                 # Code has Main, need to call method from outside the namespace
                                 # Remove the existing Main and add test Main outside namespace
                                 # This is complex, so for integration tests just run the code
-                                test_code = code
+                                test_code = base_code
                             else:
                                 # No Main exists, add TestRunner outside the namespace
-                                test_code = f"""{code}
+                                test_code = f"""{base_code}
 
 // Test execution
 class TestRunner {{
@@ -284,10 +371,10 @@ class TestRunner {{
                             # Simple function name without dots
                             if has_main:
                                 # Already has Main, just run it
-                                test_code = code
+                                test_code = base_code
                             else:
                                 # Add Main to call the function
-                                test_code = f"""{code}
+                                test_code = f"""{base_code}
 
 // Test execution
 class TestRunner {{
@@ -300,12 +387,12 @@ class TestRunner {{
                         # For Java, handle integration tests vs function tests
                         if function_name.lower() == 'main':
                             # Integration test - run the whole program
-                            test_code = code
+                            test_code = base_code
                         else:
                             # Function test
                             if '.' in function_name:
                                 class_name, method_name = function_name.split('.', 1)
-                                test_code = f"""{code}
+                                test_code = f"""{base_code}
 
 // Test execution
 class TestRunner {{
@@ -316,7 +403,7 @@ class TestRunner {{
     }}
 }}"""
                             else:
-                                test_code = f"""{code}
+                                test_code = f"""{base_code}
 
 // Test execution
 class TestRunner {{
@@ -327,7 +414,7 @@ class TestRunner {{
 }}"""
                     else:
                         # For other languages, try a generic approach
-                        test_code = f"{code}\n\n{function_name}({input_data});"
+                        test_code = f"{base_code}\n\n{function_name}({input_data});"
 
                     # Run the test
                     result = self.run_code(test_code, language, stdin="")
@@ -369,7 +456,7 @@ class TestRunner {{
                     tests_failed += 1
 
             # Also run the code normally to get any compilation/syntax errors
-            normal_result = self.run_code(code, language, stdin="")
+            normal_result = self.run_code(base_code, language, stdin="")
 
             return {
                 "success": tests_passed > 0 and tests_failed == 0,
