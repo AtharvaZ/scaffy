@@ -390,7 +390,7 @@ export function EditorPage() {
                 onClick={() => setIsFeedbackOpen(true)}
                 className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-5 h-5" />
                 <span className="hidden sm:inline">Feedback</span>
               </button>
               <Button
