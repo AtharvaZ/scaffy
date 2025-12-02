@@ -112,11 +112,10 @@ export function AssignmentInput({
                   </label>
                   <div className="relative rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-8 min-h-[200px] flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
-                      {/* Animated dots */}
-                      <div className="flex gap-3">
-                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }} />
-                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }} />
-                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }} />
+                      <div className="flex gap-3 items-end h-12">
+                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" style={{ animation: 'bounce 1s infinite', animationDelay: '0ms' }} />
+                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" style={{ animation: 'bounce 1s infinite', animationDelay: '200ms' }} />
+                        <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500" style={{ animation: 'bounce 1s infinite', animationDelay: '400ms' }} />
                       </div>
                     </div>
                   </div>
